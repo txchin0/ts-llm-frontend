@@ -1,0 +1,40 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.button:hover:not(:disabled) {
+  background-color: var(--surface-2);
+  color: var(--ink);
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.button[aria-pressed='true'] {
+  color: var(--primary-ink);
+  background-color: var(--primary-wash);
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  padding-inline: var(--space-2);
+  width: auto;
+  gap: var(--space-2);
+}

@@ -1,0 +1,120 @@
+.row {
+  display: flex;
+  flex-direction: column;
+  animation: enter var(--dur-slow) var(--ease-out);
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* User turn: aligned to the trailing edge, ember-tinted bubble. */
+.user {
+  align-items: flex-end;
+}
+
+.userBubble {
+  max-width: min(100%, 34rem);
+  background: var(--primary-wash);
+  color: var(--ink);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Assistant turn: open, full measure, no bubble. */
+.assistant {
+  align-items: stretch;
+}
+
+.assistantInner {
+  display: flex;
+  flex-direction: column;
+}
+
+.speaker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: var(--space-2);
+}
+
+.speakerMark {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+}
+
+.caret {
+  display: inline-block;
+  width: 0.5em;
+  height: 1.05em;
+  margin-inline-start: 2px;
+  vertical-align: text-bottom;
+  background: var(--primary);
+  border-radius: 2px;
+  animation: blink 1s steps(2, start) infinite;
+}
+
+@keyframes blink {
+  to {
+    opacity: 0;
+  }
+}
+
+.thinkingOnly {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.error {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--danger-wash);
+  color: var(--danger);
+  font-size: var(--text-sm);
+}
+
+.errorIcon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.errorCode {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  opacity: 0.8;
+}
+
+.meta {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.aborted {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--muted);
+  font-style: italic;
+}

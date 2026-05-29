@@ -1,0 +1,117 @@
+.wrap {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-sticky);
+  padding: var(--space-3) var(--space-4)
+    calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, var(--bg) 62%, transparent);
+}
+
+.inner {
+  max-width: var(--measure);
+  margin-inline: auto;
+}
+
+.bar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  transition: border-color var(--dur) var(--ease-out);
+}
+
+.bar:focus-within {
+  border-color: var(--border-strong);
+}
+
+.textarea {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: none;
+  resize: none;
+  padding: var(--space-2);
+  max-height: 11rem;
+  line-height: var(--leading-snug);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+.textarea::placeholder {
+  color: var(--muted);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.mic[aria-pressed='true'] {
+  color: var(--on-primary);
+  background: var(--danger);
+}
+.mic[aria-pressed='true']:hover {
+  background: var(--danger);
+}
+
+.send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: var(--on-primary);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
+}
+
+.send:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+.send:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.stop {
+  background: var(--surface-2);
+  color: var(--ink);
+  border: 1px solid var(--border-strong);
+}
+.stop:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--ink);
+}
+
+.hint {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  padding-inline: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.listening {
+  color: var(--danger);
+  font-weight: 500;
+}
+
+@media (max-width: 600px) {
+  .hint .desktopHint {
+    display: none;
+  }
+}
