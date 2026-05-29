@@ -38,8 +38,12 @@ export function Transcript({ messages, showThinking, userId }: TranscriptProps) 
           </span>
           <h1 className={styles.emptyTitle}>Good to see you.</h1>
           <p className={styles.emptyText}>
-            Ask anything. I&rsquo;ll stream the answer as I go and show my thinking and
-            any tools I reach for along the way.
+            Ask anything. Answers stream in as they are written, with thinking steps and
+            tool use shown along the way.
+          </p>
+          <p className={styles.emptySetup}>
+            The agent server must be running. In dev, start it and use the Vite proxy, or
+            point production at your host.
           </p>
           <p className={styles.emptyUser}>
             Speaking as <code>{userId}</code>

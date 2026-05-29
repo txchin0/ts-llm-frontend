@@ -191,11 +191,17 @@ export function useChat({ userId }: UseChatOptions): UseChat {
                 ? error.message
                 : error instanceof Error
                   ? error.message
-                  : 'The request failed unexpectedly.';
+                  : 'Something went wrong while sending your message. Try again.';
             patchAssistant(assistantId, (m) => ({
               ...m,
               status: 'error',
-              error: { code: 'client_error', message },
+              error: {
+                code:
+                  error instanceof RespondHttpError
+                    ? `http_${error.status}`
+                    : 'client_error',
+                message,
+              },
             }));
           }
         } finally {

@@ -19,9 +19,9 @@ function formatPayload(value: unknown): string {
 }
 
 const STATUS_LABEL: Record<ToolActivity['status'], string> = {
-  running: 'running',
-  done: 'done',
-  error: 'error',
+  running: 'Running',
+  done: 'Done',
+  error: 'Failed',
 };
 
 export function ToolChip({ tool }: ToolChipProps) {
@@ -58,10 +58,13 @@ export function ToolChip({ tool }: ToolChipProps) {
           ) : null}
           {tool.errorMessage ? (
             <div className={styles.section}>
-              <span className={`${styles.sectionLabel} ${styles.error}`}>
-                Error{tool.errorCode ? ` · ${tool.errorCode}` : ''}
-              </span>
+              <span className={`${styles.sectionLabel} ${styles.error}`}>What went wrong</span>
               <pre className={styles.payload}>{tool.errorMessage}</pre>
+              {tool.errorCode ? (
+                <p className={styles.errorCode}>
+                  Code: <code>{tool.errorCode}</code>
+                </p>
+              ) : null}
             </div>
           ) : null}
           {output ? (

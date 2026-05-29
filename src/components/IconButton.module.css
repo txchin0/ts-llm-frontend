@@ -2,8 +2,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  flex-shrink: 0;
   border-radius: var(--radius-md);
   color: var(--muted);
   transition:
@@ -36,5 +37,17 @@
   font-weight: 500;
   padding-inline: var(--space-2);
   width: auto;
+  min-height: var(--touch-target);
   gap: var(--space-2);
+}
+
+.visibleLabel {
+  display: none;
+}
+
+/* Show short toolbar labels from phablet width up (thumb + recognition). */
+@media (min-width: 520px) {
+  .label .visibleLabel {
+    display: inline;
+  }
 }

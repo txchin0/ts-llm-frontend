@@ -32,7 +32,15 @@ export class RespondHttpError extends Error {
   readonly statusText: string;
 
   constructor(status: number, statusText: string) {
-    super(`Agent server returned HTTP ${status} ${statusText}`);
+    const hint =
+      status === 404
+        ? ' Check that the agent server is running and the URL is correct.'
+        : status >= 500
+          ? ' Try again in a moment.'
+          : status === 401 || status === 403
+            ? ' Check server auth settings.'
+            : '';
+    super(`Could not reach the agent server (HTTP ${status}${statusText ? ` ${statusText}` : ''}).${hint}`);
     this.name = 'RespondHttpError';
     this.status = status;
     this.statusText = statusText;

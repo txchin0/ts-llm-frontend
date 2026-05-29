@@ -37,6 +37,7 @@
 
   /* Layout */
   --measure: 46rem;
+  --touch-target: 2.75rem; /* 44px — minimum tap area for thumb use */
 
   /* Motion */
   --dur-fast: 120ms;

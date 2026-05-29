@@ -3,7 +3,6 @@
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  overflow: hidden;
 }
 
 /* Subtle warm grain for atmosphere; never distracting. */
@@ -24,4 +23,6 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  /* Clip scroll to the transcript; keep header/composer focus rings visible. */
+  overflow: hidden;
 }

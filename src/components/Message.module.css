@@ -45,10 +45,8 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--muted);
   margin-bottom: var(--space-2);
 }
@@ -99,10 +97,32 @@
   margin-top: 1px;
 }
 
-.errorCode {
-  font-family: var(--font-mono);
+.errorBody {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.errorBody p {
+  margin: 0;
+}
+
+.errorDetails {
   font-size: var(--text-xs);
-  opacity: 0.8;
+  color: var(--muted);
+}
+
+.errorDetails summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: inherit;
+}
+
+.errorDetails code {
+  display: block;
+  margin-top: var(--space-1);
+  font-family: var(--font-mono);
+  word-break: break-all;
 }
 
 .meta {

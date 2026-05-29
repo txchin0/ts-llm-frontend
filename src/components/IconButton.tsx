@@ -8,12 +8,15 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
   /** Render the visible text label alongside the icon. */
   showLabel?: boolean;
+  /** Shorter text when `showLabel` is true; defaults to `label`. */
+  visibleLabel?: string;
 }
 
 export function IconButton({
   label,
   children,
   showLabel = false,
+  visibleLabel,
   className,
   ...props
 }: IconButtonProps) {
@@ -26,7 +29,7 @@ export function IconButton({
       {...props}
     >
       {children}
-      {showLabel ? <span>{label}</span> : null}
+      {showLabel ? <span className={styles.visibleLabel}>{visibleLabel ?? label}</span> : null}
     </button>
   );
 }

@@ -70,6 +70,12 @@
   text-wrap: pretty;
 }
 
+.emptySetup {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
 .emptyUser {
   margin-top: var(--space-3);
   font-size: var(--text-sm);

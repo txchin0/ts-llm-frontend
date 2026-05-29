@@ -70,16 +70,20 @@ function AssistantBody({
       {message.status === 'error' && message.error ? (
         <div className={styles.error} role="alert">
           <AlertIcon className={styles.errorIcon} width={18} height={18} />
-          <span>
-            {message.error.message}
-            <br />
-            <span className={styles.errorCode}>{message.error.code}</span>
-          </span>
+          <div className={styles.errorBody}>
+            <p>{message.error.message}</p>
+            {message.error.code && message.error.code !== 'client_error' ? (
+              <details className={styles.errorDetails}>
+                <summary>Technical details</summary>
+                <code>{message.error.code}</code>
+              </details>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
       {message.status === 'aborted' ? (
-        <p className={styles.aborted}>Stopped.</p>
+        <p className={styles.aborted}>Generation stopped.</p>
       ) : null}
 
       {message.status === 'complete' && message.usage ? (

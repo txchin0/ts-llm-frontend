@@ -108,9 +108,9 @@ export function Composer({
         <div className={styles.hint}>
           <span>
             {isListening ? (
-              <span className={styles.listening}>Recording — speak now</span>
+              <span className={styles.listening}>Recording. Speak now.</span>
             ) : (
-              'Conversations are never saved.'
+              'Nothing is saved after you leave.'
             )}
           </span>
           <span className={styles.desktopHint}>Enter to send · Shift+Enter for a new line</span>

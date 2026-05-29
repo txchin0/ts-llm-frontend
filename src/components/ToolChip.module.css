@@ -115,3 +115,13 @@
 .error {
   color: var(--danger);
 }
+
+.errorCode {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.errorCode code {
+  font-family: var(--font-mono);
+}

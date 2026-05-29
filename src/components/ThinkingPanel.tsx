@@ -27,7 +27,7 @@ export function ThinkingPanel({ text, streaming }: ThinkingPanelProps) {
         <BrainIcon className={styles.icon} width={16} height={16} />
         <span>Thinking</span>
         {streaming ? (
-          <span className={styles.live}>reasoning…</span>
+          <span className={styles.live}>Reasoning…</span>
         ) : (
           <ChevronIcon
             className={styles.chevron}

@@ -48,14 +48,15 @@ export function UserIdDialog({
     <dialog ref={dialogRef} className={styles.dialog} onCancel={onClose} onClose={onClose}>
       <form className={styles.form} onSubmit={handleSubmit}>
         <div>
-          <h2 className={styles.title}>User identity</h2>
+          <h2 className={styles.title}>Speaking as</h2>
         </div>
         <p className={styles.desc}>
-          The agent receives this as <code>user_id</code> with every request.
+          Pick a name the agent server uses to tell your requests apart. It is not a login;
+          it is just an ID string sent with each message.
         </p>
         <div className={styles.field}>
           <label className={styles.label} htmlFor={inputId}>
-            user_id
+            Identity name
           </label>
           <input
             id={inputId}
@@ -65,11 +66,14 @@ export function UserIdDialog({
             autoFocus
             autoComplete="off"
             spellCheck={false}
-            placeholder="e.g. web-user"
+            placeholder="e.g. thomas-home"
           />
+          <p className={styles.apiNote}>
+            Sent to the API as <code>user_id</code>.
+          </p>
           {changed && hasActiveSession ? (
             <span className={styles.note}>
-              Switching identity starts a fresh conversation.
+              Changing identity clears this chat and starts fresh.
             </span>
           ) : null}
         </div>
@@ -82,7 +86,7 @@ export function UserIdDialog({
             className={`${styles.button} ${styles.save}`}
             disabled={!changed}
           >
-            Save
+            Save identity
           </button>
         </div>
       </form>
