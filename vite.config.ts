@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => {
     server: {
       // Expose on the LAN so phones/tablets can reach the dev server.
       host: true,
+      allowedHosts: ['desktop-main.chimera-lydian.ts.net', '.ts.net'],
       proxy: {
         '/v1': {
           target,
@@ -28,6 +29,7 @@ export default defineConfig(({ mode }) => {
     },
     preview: {
       host: true,
+      allowedHosts: ['desktop-main.chimera-lydian.ts.net', '.ts.net'],
     },
   };
 });

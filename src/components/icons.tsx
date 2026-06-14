@@ -132,6 +132,15 @@ export function CloseIcon(props: IconProps) {
   );
 }
 
+export function ListIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M9 6h12M9 12h12M9 18h12" />
+      <path d="M5 6h.01M5 12h.01M5 18h.01" />
+    </Icon>
+  );
+}
+
 export function CheckIcon(props: IconProps) {
   return (
     <Icon {...props}>

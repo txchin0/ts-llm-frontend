@@ -17,6 +17,7 @@ interface ComposerProps {
   isStreaming: boolean;
   voiceSupported: boolean;
   isListening: boolean;
+  voiceError: string | null;
   onToggleVoice: () => void;
 }
 
@@ -28,6 +29,7 @@ export function Composer({
   isStreaming,
   voiceSupported,
   isListening,
+  voiceError,
   onToggleVoice,
 }: ComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -109,6 +111,8 @@ export function Composer({
           <span>
             {isListening ? (
               <span className={styles.listening}>Recording. Speak now.</span>
+            ) : voiceError ? (
+              <span className={styles.voiceError}>{voiceError}</span>
             ) : (
               'Nothing is saved after you leave.'
             )}

@@ -38,6 +38,8 @@
   /* Layout */
   --measure: 46rem;
   --touch-target: 2.75rem; /* 44px — minimum tap area for thumb use */
+  /* Header inner row: padding + control height + padding (safe-area is additive). */
+  --header-height: calc(var(--space-3) + var(--touch-target) + var(--space-3));
 
   /* Motion */
   --dur-fast: 120ms;

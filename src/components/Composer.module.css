@@ -30,15 +30,41 @@
 
 .textarea {
   flex: 1;
+  min-width: 0;
   border: none;
   outline: none;
   background: none;
   resize: none;
   padding: var(--space-2);
   max-height: 11rem;
+  overflow-x: hidden;
+  overflow-y: auto;
   line-height: var(--leading-snug);
   color: var(--ink);
   font-family: var(--font-sans);
+  /* Hide the track Android/Chrome paints beside the action buttons; touch scroll still works. */
+  scrollbar-width: none;
+}
+
+.textarea::-webkit-scrollbar {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .textarea {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
+  .textarea::-webkit-scrollbar {
+    display: block;
+    width: 6px;
+  }
+
+  .textarea::-webkit-scrollbar-thumb {
+    background-color: var(--border-strong);
+    border-radius: var(--radius-pill);
+  }
 }
 
 .textarea::placeholder {
@@ -109,6 +135,10 @@
 .listening {
   color: var(--danger);
   font-weight: 500;
+}
+
+.voiceError {
+  color: var(--danger);
 }
 
 @media (max-width: 600px) {
