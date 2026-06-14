@@ -50,7 +50,6 @@ export function Header({
 
   const ThemeIcon = theme === 'light' ? SunIcon : theme === 'dark' ? MoonIcon : MonitorIcon;
   const thinkingLabel = showThinking ? 'Hide thinking steps' : 'Show thinking steps';
-
   return (
     <header className={styles.header}>
       <div className={styles.inner}>

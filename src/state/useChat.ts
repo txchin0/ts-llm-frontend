@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 
-import { RespondHttpError, respondStream } from '../api/client.ts';
+import { ApiHttpError, respondStream } from '../api/client.ts';
 import type { AssistantMessage, ChatMessage, ToolActivity } from './types.ts';
 
 function createId(): string {
@@ -187,7 +187,7 @@ export function useChat({ userId }: UseChatOptions): UseChat {
             );
           } else {
             const message =
-              error instanceof RespondHttpError
+              error instanceof ApiHttpError
                 ? error.message
                 : error instanceof Error
                   ? error.message
@@ -197,7 +197,7 @@ export function useChat({ userId }: UseChatOptions): UseChat {
               status: 'error',
               error: {
                 code:
-                  error instanceof RespondHttpError
+                  error instanceof ApiHttpError
                     ? `http_${error.status}`
                     : 'client_error',
                 message,

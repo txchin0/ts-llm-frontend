@@ -50,4 +50,7 @@ interface SpeechRecognitionConstructor {
 interface Window {
   SpeechRecognition?: SpeechRecognitionConstructor;
   webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  cursor?: unknown;
+  __CURSOR__?: unknown;
+  __GLASS_BROWSER__?: unknown;
 }
