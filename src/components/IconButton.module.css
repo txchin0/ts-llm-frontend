@@ -45,8 +45,8 @@
   display: none;
 }
 
-/* Show short toolbar labels from phablet width up (thumb + recognition). */
-@media (min-width: 520px) {
+/* Show short toolbar labels once the header has room (icon-only below this). */
+@media (min-width: 720px) {
   .label .visibleLabel {
     display: inline;
   }

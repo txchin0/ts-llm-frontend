@@ -4,6 +4,7 @@ import {
   MonitorIcon,
   MoonIcon,
   PlusIcon,
+  SettingsIcon,
   SunIcon,
   UserIcon,
 } from './icons.tsx';
@@ -19,6 +20,7 @@ interface HeaderProps {
   hasSession: boolean;
   onNewChat: () => void;
   onOpenUserDialog: () => void;
+  onOpenSettings: () => void;
 }
 
 const THEME_ORDER: ThemePreference[] = ['system', 'light', 'dark'];
@@ -42,6 +44,7 @@ export function Header({
   hasSession,
   onNewChat,
   onOpenUserDialog,
+  onOpenSettings,
 }: HeaderProps) {
   const cycleTheme = () => {
     const index = THEME_ORDER.indexOf(theme);
@@ -67,6 +70,7 @@ export function Header({
 
         <div className={styles.controls}>
           <IconButton
+            className={styles.overflowToSettings}
             label={thinkingLabel}
             visibleLabel="Thinking"
             showLabel
@@ -77,6 +81,7 @@ export function Header({
           </IconButton>
 
           <IconButton
+            className={styles.overflowToSettings}
             label={`${THEME_LABEL[theme]}. Currently ${THEME_SHORT[theme].toLowerCase()}.`}
             visibleLabel={THEME_SHORT[theme]}
             showLabel
@@ -93,6 +98,15 @@ export function Header({
             disabled={!hasSession}
           >
             <PlusIcon />
+          </IconButton>
+
+          <IconButton
+            label="Open settings"
+            visibleLabel="Options"
+            showLabel
+            onClick={onOpenSettings}
+          >
+            <SettingsIcon />
           </IconButton>
 
           <span className={styles.divider} aria-hidden="true" />

@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import {
+  isMicLanguagePreference,
+  type MicLanguagePreference,
+} from '../voice/speechLanguages.ts';
+
 export type ThemePreference = 'light' | 'dark' | 'system';
 export type ResolvedTheme = 'light' | 'dark';
 
 const USER_ID_KEY = 'ts-llm.user_id';
 const THEME_KEY = 'ts-llm.theme';
+const MIC_LANGUAGE_KEY = 'ts-llm.mic_language';
 const DEFAULT_USER_ID = 'web-user';
 
 function readStored(key: string): string | null {
@@ -42,12 +48,14 @@ export interface Settings {
   setTheme: (next: ThemePreference) => void;
   /** The actual theme in effect after resolving `system`. */
   resolvedTheme: ResolvedTheme;
+  micLanguage: MicLanguagePreference;
+  setMicLanguage: (next: MicLanguagePreference) => void;
 }
 
 /**
- * Holds the only persisted state in the app: the active user id and the theme
- * preference. Conversations are never stored. Applies the resolved theme to the
- * document root so CSS tokens can switch via `[data-theme]`.
+ * Holds persisted app preferences: user id, theme, and voice input language.
+ * Conversations are never stored. Applies the resolved theme to the document
+ * root so CSS tokens can switch via `[data-theme]`.
  */
 export function useSettings(): Settings {
   const [userId, setUserIdState] = useState<string>(
@@ -57,6 +65,11 @@ export function useSettings(): Settings {
   const [theme, setThemeState] = useState<ThemePreference>(() => {
     const stored = readStored(THEME_KEY);
     return isThemePreference(stored) ? stored : 'system';
+  });
+
+  const [micLanguage, setMicLanguageState] = useState<MicLanguagePreference>(() => {
+    const stored = readStored(MIC_LANGUAGE_KEY);
+    return isMicLanguagePreference(stored) ? stored : 'system';
   });
 
   const [systemDark, setSystemDark] = useState<boolean>(prefersDark);
@@ -94,5 +107,10 @@ export function useSettings(): Settings {
     writeStored(THEME_KEY, next);
   }, []);
 
-  return { userId, setUserId, theme, setTheme, resolvedTheme };
+  const setMicLanguage = useCallback((next: MicLanguagePreference) => {
+    setMicLanguageState(next);
+    writeStored(MIC_LANGUAGE_KEY, next);
+  }, []);
+
+  return { userId, setUserId, theme, setTheme, resolvedTheme, micLanguage, setMicLanguage };
 }

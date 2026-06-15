@@ -108,7 +108,18 @@
   margin-inline: var(--space-1);
 }
 
-@media (max-width: 560px) {
+/* Thinking + theme stay in the header on wider screens; narrow phones use Settings. */
+@media (max-width: 480px) {
+  .overflowToSettings {
+    display: none;
+  }
+
+  .divider {
+    display: none;
+  }
+}
+
+@media (max-width: 719px) {
   .session {
     display: none;
   }
@@ -118,12 +129,25 @@
   }
 
   .userId {
-    max-width: 4.5rem;
+    max-width: 5.5rem;
   }
 
   .userButton {
-    max-width: 7.5rem;
+    max-width: 8.5rem;
     padding-inline: var(--space-2);
+  }
+}
+
+@media (max-width: 400px) {
+  .userId {
+    display: none;
+  }
+
+  .userButton {
+    width: var(--touch-target);
+    max-width: var(--touch-target);
+    padding-inline: 0;
+    justify-content: center;
   }
 }
 

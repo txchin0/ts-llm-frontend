@@ -24,6 +24,8 @@ function releaseRecognition(recognition: SpeechRecognition | null, opts?: { abor
 export interface UseSpeechInputOptions {
   /** Called with the full text (base + recognized) as speech is transcribed. */
   onTranscript: (text: string) => void;
+  /** BCP 47 language tag for recognition (e.g. `en-US`). */
+  language: string;
 }
 
 export interface SpeechInput {
@@ -45,7 +47,7 @@ export interface SpeechInput {
  * Uses continuous listening; restarts automatically when the browser ends a
  * session early (common on Android Chrome).
  */
-export function useSpeechInput({ onTranscript }: UseSpeechInputOptions): SpeechInput {
+export function useSpeechInput({ onTranscript, language }: UseSpeechInputOptions): SpeechInput {
   const [supported] = useState(() => getRecognitionConstructor() !== undefined);
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,8 +58,12 @@ export function useSpeechInput({ onTranscript }: UseSpeechInputOptions): SpeechI
   const finalTextRef = useRef('');
   const launchRecognitionRef = useRef<() => void>(() => {});
   const onTranscriptRef = useRef(onTranscript);
+  const languageRef = useRef(language);
   useEffect(() => {
     onTranscriptRef.current = onTranscript;
+  });
+  useEffect(() => {
+    languageRef.current = language;
   });
 
   const clearError = useCallback(() => {
@@ -84,9 +90,7 @@ export function useSpeechInput({ onTranscript }: UseSpeechInputOptions): SpeechI
     if (!Constructor || !wantsListeningRef.current) return;
 
     const recognition = new Constructor();
-    recognition.lang =
-      document.documentElement.lang ||
-      (typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'en-US');
+    recognition.lang = languageRef.current;
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
