@@ -4,6 +4,7 @@ import type { AssistantMessage, ChatMessage } from '../state/types.ts';
 import { AlertIcon } from './icons.tsx';
 import { Markdown } from './Markdown.tsx';
 import { ThinkingPanel } from './ThinkingPanel.tsx';
+import { StreamingDots } from './StreamingDots.tsx';
 import { ToolChip } from './ToolChip.tsx';
 import styles from './Message.module.css';
 
@@ -61,10 +62,7 @@ function AssistantBody({
           {streaming ? <span className={styles.caret} aria-hidden="true" /> : null}
         </div>
       ) : streaming ? (
-        <p className={styles.thinkingOnly}>
-          {hasThinking ? 'Reasoning…' : 'Working…'}
-          <span className={styles.caret} aria-hidden="true" />
-        </p>
+        <StreamingDots />
       ) : null}
 
       {message.status === 'error' && message.error ? (

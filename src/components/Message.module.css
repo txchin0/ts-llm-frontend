@@ -75,11 +75,6 @@
   }
 }
 
-.thinkingOnly {
-  color: var(--muted);
-  font-style: italic;
-}
-
 .error {
   display: flex;
   gap: var(--space-2);
