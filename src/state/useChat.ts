@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
 
 import { ApiHttpError, respondStream } from '../api/client.ts';
-import type { AssistantMessage, ChatMessage, ToolActivity } from './types.ts';
+import { applyRespondEvent, completeStreamingMessage } from './chatStreamReducer.ts';
+import type { AssistantMessage, ChatMessage } from './types.ts';
 
 function createId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -17,19 +18,12 @@ export interface UseChatOptions {
 export interface UseChat {
   messages: ChatMessage[];
   isStreaming: boolean;
-  /** True once at least one turn has produced a server session. */
   hasSession: boolean;
   send: (text: string) => void;
   stop: () => void;
-  /** Clears the transcript and forgets the session (starts a new chat). */
   reset: () => void;
 }
 
-/**
- * In-memory chat state. Nothing here is persisted. Each assistant turn keeps
- * `content` (normal output) and `thinking` (reasoning) separate, plus a list of
- * tool activities, so the UI can render them distinctly.
- */
 export function useChat({ userId }: UseChatOptions): UseChat {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -102,105 +96,32 @@ export function useChat({ userId }: UseChatOptions): UseChat {
           );
 
           for await (const event of stream) {
-            switch (event.type) {
-              case 'start': {
-                sessionIdRef.current = event.session_id;
-                setHasSession(true);
-                patchAssistant(assistantId, (m) => ({ ...m, requestId: event.request_id }));
-                break;
-              }
-              case 'delta': {
-                patchAssistant(assistantId, (m) => ({ ...m, content: m.content + event.text }));
-                break;
-              }
-              case 'thinking_delta': {
-                patchAssistant(assistantId, (m) => ({
-                  ...m,
-                  thinking: m.thinking + event.text,
-                }));
-                break;
-              }
-              case 'tool_call': {
-                const activity: ToolActivity = {
-                  toolCallId: event.tool_call_id,
-                  toolName: event.tool_name,
-                  step: event.step,
-                  input: event.input,
-                  status: 'running',
-                };
-                patchAssistant(assistantId, (m) => ({ ...m, tools: [...m.tools, activity] }));
-                break;
-              }
-              case 'tool_result': {
-                patchAssistant(assistantId, (m) => ({
-                  ...m,
-                  tools: m.tools.map((tool) =>
-                    tool.toolCallId === event.tool_call_id
-                      ? {
-                          ...tool,
-                          output: event.output,
-                          isError: event.is_error,
-                          errorCode: event.error_code,
-                          errorMessage: event.error_message,
-                          status: event.is_error ? 'error' : 'done',
-                        }
-                      : tool,
-                  ),
-                }));
-                break;
-              }
-              case 'usage': {
-                patchAssistant(assistantId, (m) => ({ ...m, usage: event.usage }));
-                break;
-              }
-              case 'final': {
-                patchAssistant(assistantId, (m) => ({
-                  ...m,
-                  status: m.status === 'streaming' ? 'complete' : m.status,
-                  finishReason: event.finish_reason,
-                }));
-                break;
-              }
-              case 'error': {
-                patchAssistant(assistantId, (m) => ({
-                  ...m,
-                  status: 'error',
-                  error: { code: event.code, message: event.message },
-                }));
-                break;
-              }
-              case 'unknown': {
-                // Reserved for future server events (e.g. TTS audio). Ignored for now.
-                break;
-              }
+            if (event.type === 'start') {
+              sessionIdRef.current = event.session_id;
+              setHasSession(true);
             }
+            patchAssistant(assistantId, (message) => applyRespondEvent(message, event));
           }
 
-          // If the stream ended without a terminal event, mark it complete.
-          patchAssistant(assistantId, (m) =>
-            m.status === 'streaming' ? { ...m, status: 'complete' } : m,
-          );
+          patchAssistant(assistantId, completeStreamingMessage);
         } catch (error) {
           if (controller.signal.aborted) {
-            patchAssistant(assistantId, (m) =>
-              m.status === 'streaming' ? { ...m, status: 'aborted' } : m,
+            patchAssistant(assistantId, (message) =>
+              message.status === 'streaming' ? { ...message, status: 'aborted' } : message,
             );
           } else {
-            const message =
+            const errorMessage =
               error instanceof ApiHttpError
                 ? error.message
                 : error instanceof Error
                   ? error.message
                   : 'Something went wrong while sending your message. Try again.';
-            patchAssistant(assistantId, (m) => ({
-              ...m,
+            patchAssistant(assistantId, (message) => ({
+              ...message,
               status: 'error',
               error: {
-                code:
-                  error instanceof ApiHttpError
-                    ? `http_${error.status}`
-                    : 'client_error',
-                message,
+                code: error instanceof ApiHttpError ? `http_${error.status}` : 'client_error',
+                message: errorMessage,
               },
             }));
           }
