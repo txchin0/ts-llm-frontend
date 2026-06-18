@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { Composer } from './components/Composer.tsx';
 import { Header } from './components/Header.tsx';
@@ -30,6 +30,10 @@ export function App() {
     userId,
     pollIntervalMs: tasksExpanded ? 5_000 : 20_000,
   });
+
+  if (tasks.tasks.length === 0 && tasksExpanded) {
+    setTasksExpanded(false);
+  }
 
   const voice = useSpeechInput({
     onTranscript: (text) => setInput(text),
@@ -79,12 +83,6 @@ export function App() {
     },
     [input, setMicLanguage, voice],
   );
-
-  useEffect(() => {
-    if (tasks.tasks.length === 0 && tasksExpanded) {
-      setTasksExpanded(false);
-    }
-  }, [tasks.tasks.length, tasksExpanded]);
 
   const hasActiveSession = hasSession || messages.length > 0;
 
