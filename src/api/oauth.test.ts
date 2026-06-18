@@ -1,13 +1,58 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiHttpError } from './errors.ts';
-import { buildOAuthStartUrl, disconnectOAuth, toOAuthUserMessage } from './oauth.ts';
+import {
+  buildOAuthStartUrl,
+  disconnectOAuth,
+  oauthCallbackErrorMessage,
+  oauthProviderLabel,
+  parseOAuthConnectedParams,
+  toOAuthUserMessage,
+} from './oauth.ts';
 
 describe('buildOAuthStartUrl', () => {
   it('builds a start URL with encoded provider and user id', () => {
     expect(buildOAuthStartUrl('google', 'user 1', 'https://api.test')).toBe(
       'https://api.test/v1/oauth/google/start?user_id=user+1',
     );
+  });
+});
+
+describe('oauthProviderLabel', () => {
+  it('returns a label for known providers', () => {
+    expect(oauthProviderLabel('google')).toBe('Google');
+  });
+
+  it('returns undefined for unknown providers', () => {
+    expect(oauthProviderLabel('unknown')).toBeUndefined();
+  });
+});
+
+describe('oauthCallbackErrorMessage', () => {
+  it('maps known error codes', () => {
+    expect(oauthCallbackErrorMessage('access_denied')).toContain('cancelled');
+  });
+
+  it('falls back for unknown codes', () => {
+    expect(oauthCallbackErrorMessage('something_else')).toContain('Try again');
+  });
+});
+
+describe('parseOAuthConnectedParams', () => {
+  it('parses provider and error from a query string', () => {
+    expect(parseOAuthConnectedParams('?provider=google&error=invalid_state')).toEqual({
+      providerId: 'google',
+      providerLabel: 'Google',
+      errorCode: 'invalid_state',
+    });
+  });
+
+  it('omits empty values', () => {
+    expect(parseOAuthConnectedParams('')).toEqual({
+      providerId: undefined,
+      providerLabel: undefined,
+      errorCode: undefined,
+    });
   });
 });
 

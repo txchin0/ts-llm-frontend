@@ -1,0 +1,113 @@
+.page {
+  min-height: 100%;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  padding: var(--space-6) var(--space-4);
+}
+
+.inner {
+  max-width: 30rem;
+  display: grid;
+  gap: var(--space-3);
+  justify-items: center;
+  animation: rise var(--dur-slow) var(--ease-out);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inner {
+    animation: none;
+  }
+}
+
+.mark {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-md);
+  display: grid;
+  place-content: center;
+  margin-bottom: var(--space-2);
+}
+
+.mark_success {
+  background: var(--primary-wash);
+  color: var(--success);
+}
+
+.mark_error {
+  background: var(--danger-wash);
+  color: var(--danger);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.status {
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.errorMessage {
+  color: var(--muted);
+  text-wrap: pretty;
+  max-width: 28ch;
+}
+
+.actions {
+  margin-top: var(--space-2);
+  min-height: var(--touch-target);
+  display: grid;
+  place-items: center;
+}
+
+.closeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch-target);
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  background: var(--primary);
+  color: var(--on-primary);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.closeButton:hover {
+  background: var(--primary-hover);
+}
+
+.closeButton:active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .closeButton {
+    transition: background-color var(--dur-fast) var(--ease-out);
+  }
+
+  .closeButton:active {
+    transform: none;
+  }
+}

@@ -90,6 +90,45 @@ export async function disconnectOAuth(
   }
 }
 
+const OAUTH_PROVIDER_LABELS: Record<string, string> = {
+  google: 'Google',
+};
+
+const OAUTH_CALLBACK_ERROR_MESSAGES: Record<string, string> = {
+  provider_not_configured: 'Sign-in is not configured on this server.',
+  provider_not_found: 'This sign-in provider is not available.',
+  invalid_state: 'The sign-in session expired. Try again from settings.',
+  token_exchange_failed: 'Could not finish sign-in. Try again.',
+  access_denied: 'Sign-in was cancelled.',
+};
+
+export interface OAuthConnectedParams {
+  providerId?: string;
+  providerLabel?: string;
+  errorCode?: string;
+}
+
+/** Maps a known OAuth provider id to a display label. */
+export function oauthProviderLabel(providerId: string): string | undefined {
+  return OAUTH_PROVIDER_LABELS[providerId];
+}
+
+/** Maps callback redirect error codes to user-facing messages. */
+export function oauthCallbackErrorMessage(code: string): string {
+  return OAUTH_CALLBACK_ERROR_MESSAGES[code] ?? 'Could not complete sign-in. Try again.';
+}
+
+/** Parses query params from the OAuth connected landing page. */
+export function parseOAuthConnectedParams(search: string): OAuthConnectedParams {
+  const normalized = search.startsWith('?') ? search.slice(1) : search;
+  const params = new URLSearchParams(normalized);
+  const providerId = params.get('provider')?.trim() || undefined;
+  const errorCode = params.get('error')?.trim() || undefined;
+  const providerLabel = providerId ? oauthProviderLabel(providerId) : undefined;
+
+  return { providerId, providerLabel, errorCode };
+}
+
 /** Maps OAuth API errors to user-facing messages. */
 export function toOAuthUserMessage(error: unknown): string {
   if (error instanceof ApiHttpError) {

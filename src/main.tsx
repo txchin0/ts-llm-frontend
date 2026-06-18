@@ -6,7 +6,7 @@ import '@fontsource-variable/hanken-grotesk';
 import '@fontsource-variable/jetbrains-mono';
 
 import './styles/global.css';
-import { App } from './App.tsx';
+import { Root } from './Root.tsx';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -15,6 +15,6 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <App />
+    <Root />
   </StrictMode>,
 );
