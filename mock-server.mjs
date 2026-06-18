@@ -19,6 +19,159 @@ const rid = (prefix) =>
     prefix.length + 1 + 16,
   );
 
+const MOCK_INTEGRATIONS = [
+  {
+    id: 'web_search',
+    label: 'Web Search',
+    default_enabled: true,
+    enabled: true,
+  },
+  {
+    id: 'google_calendar',
+    label: 'Google Calendar',
+    default_enabled: false,
+    enabled: false,
+    oauth: { provider_id: 'google' },
+  },
+];
+
+/** @type {Map<string, { integrations: Record<string, boolean>, oauthConnected: boolean }>} */
+const userState = new Map();
+
+function getUserState(userId) {
+  if (!userState.has(userId)) {
+    userState.set(userId, {
+      integrations: Object.fromEntries(
+        MOCK_INTEGRATIONS.map((item) => [item.id, item.enabled]),
+      ),
+      oauthConnected: false,
+    });
+  }
+  return userState.get(userId);
+}
+
+function listIntegrationsBody(userId) {
+  const state = getUserState(userId);
+  return {
+    integrations: MOCK_INTEGRATIONS.map((item) => ({
+      ...item,
+      enabled: state.integrations[item.id] ?? item.enabled,
+      ...(item.oauth ? { oauth: item.oauth } : {}),
+    })),
+  };
+}
+
+function parseQuery(url) {
+  const queryIndex = url.indexOf('?');
+  if (queryIndex === -1) {
+    return new URLSearchParams();
+  }
+  return new URLSearchParams(url.slice(queryIndex + 1));
+}
+
+function readJsonBody(req) {
+  return new Promise((resolve) => {
+    let raw = '';
+    req.on('data', (chunk) => {
+      raw += chunk;
+    });
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(raw || '{}'));
+      } catch {
+        resolve({});
+      }
+    });
+  });
+}
+
+function sendJson(res, statusCode, body) {
+  res.writeHead(statusCode, {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+  });
+  res.end(JSON.stringify(body));
+}
+
+async function handleIntegrationsGet(req, res, url) {
+  const userId = parseQuery(url).get('user_id');
+  if (!userId) {
+    sendJson(res, 400, { code: 'validation_error', message: 'user_id is required' });
+    return;
+  }
+  sendJson(res, 200, listIntegrationsBody(userId));
+}
+
+async function handleIntegrationsPut(req, res) {
+  const body = await readJsonBody(req);
+  const userId = typeof body.user_id === 'string' ? body.user_id : '';
+  const patches = body.integrations;
+  if (!userId || typeof patches !== 'object' || patches === null) {
+    sendJson(res, 400, {
+      code: 'validation_error',
+      message: 'Body must include user_id and integrations with enabled booleans only.',
+    });
+    return;
+  }
+
+  const state = getUserState(userId);
+  for (const [integrationId, patch] of Object.entries(patches)) {
+    const known = MOCK_INTEGRATIONS.find((item) => item.id === integrationId);
+    if (!known) {
+      sendJson(res, 400, { code: 'validation_error', message: `Unknown integration "${integrationId}"` });
+      return;
+    }
+    if (typeof patch?.enabled !== 'boolean') {
+      sendJson(res, 400, { code: 'validation_error', message: 'enabled must be a boolean' });
+      return;
+    }
+    state.integrations[integrationId] = patch.enabled;
+  }
+
+  sendJson(res, 200, listIntegrationsBody(userId));
+}
+
+function handleOAuthStatus(req, res, url) {
+  const userId = parseQuery(url).get('user_id');
+  if (!userId) {
+    sendJson(res, 400, { code: 'validation_error', message: 'user_id is required' });
+    return;
+  }
+  const state = getUserState(userId);
+  sendJson(res, 200, {
+    connected: state.oauthConnected,
+    granted_scopes: state.oauthConnected ? ['https://www.googleapis.com/auth/calendar.readonly'] : [],
+    missing_scopes: state.oauthConnected ? [] : ['https://www.googleapis.com/auth/calendar.readonly'],
+  });
+}
+
+function handleOAuthStart(req, res, url) {
+  const userId = parseQuery(url).get('user_id');
+  if (!userId) {
+    sendJson(res, 400, { code: 'validation_error', message: 'user_id is required' });
+    return;
+  }
+  const state = getUserState(userId);
+  state.oauthConnected = true;
+  res.writeHead(302, {
+    location: 'https://accounts.google.com/o/oauth2/auth?mock=true',
+    'cache-control': 'no-store',
+  });
+  res.end();
+}
+
+function handleOAuthDisconnect(req, res, url) {
+  const userId = parseQuery(url).get('user_id');
+  if (!userId) {
+    sendJson(res, 400, { code: 'validation_error', message: 'user_id is required' });
+    return;
+  }
+  const state = getUserState(userId);
+  state.oauthConnected = false;
+  res.writeHead(204, { 'cache-control': 'no-store' });
+  res.end();
+}
+
 function sse(res, type, payload) {
   res.write(`event: ${type}\ndata: ${JSON.stringify({ type, ...payload })}\n\n`);
 }
@@ -120,7 +273,9 @@ async function handleRespond(req, res) {
 }
 
 const server = createServer((req, res) => {
-  if (req.method === 'POST' && req.url === '/v1/respond') {
+  const url = req.url ?? '';
+
+  if (req.method === 'POST' && url === '/v1/respond') {
     handleRespond(req, res).catch(() => {
       try {
         res.end();
@@ -130,8 +285,34 @@ const server = createServer((req, res) => {
     });
     return;
   }
+
+  if (req.method === 'GET' && url.startsWith('/v1/integrations')) {
+    void handleIntegrationsGet(req, res, url);
+    return;
+  }
+
+  if (req.method === 'PUT' && url === '/v1/integrations') {
+    void handleIntegrationsPut(req, res);
+    return;
+  }
+
+  if (req.method === 'GET' && url.startsWith('/v1/oauth/google/status')) {
+    handleOAuthStatus(req, res, url);
+    return;
+  }
+
+  if (req.method === 'GET' && url.startsWith('/v1/oauth/google/start')) {
+    handleOAuthStart(req, res, url);
+    return;
+  }
+
+  if (req.method === 'DELETE' && url.startsWith('/v1/oauth/google')) {
+    handleOAuthDisconnect(req, res, url);
+    return;
+  }
+
   res.writeHead(404, { 'content-type': 'text/plain' });
-  res.end('mock ts-llm: only POST /v1/respond is implemented');
+  res.end('mock ts-llm: unsupported route');
 });
 
 server.listen(PORT, '127.0.0.1', () => {

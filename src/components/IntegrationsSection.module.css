@@ -199,3 +199,71 @@
     transform: none;
   }
 }
+
+.oauthRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding-inline: var(--space-3);
+}
+
+.oauthBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.oauthBadge_connected {
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.oauthBadge_disconnected {
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.oauthBadge_needs_reconnect {
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+}
+
+.oauthActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.oauthButton {
+  min-height: var(--touch-target);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.oauthButton:hover:not(:disabled) {
+  background: var(--bg);
+}
+
+.oauthButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.oauthButtonDisconnect {
+  color: var(--muted);
+}
