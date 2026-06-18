@@ -6,7 +6,9 @@ import {
   updateIntegrations,
   type IntegrationSummary,
 } from '../api/integrations.ts';
+import { useOAuthIntegrations } from '../state/useOAuthIntegrations.ts';
 import { integrationHint } from './integrationsCopy.ts';
+import { OAuthIntegrationActions } from './OAuthIntegrationActions.tsx';
 import styles from './IntegrationsSection.module.css';
 
 interface IntegrationsSectionProps {
@@ -80,8 +82,28 @@ export function IntegrationsSection({ userId, hasActiveSession, open }: Integrat
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const {
+    statusByProvider,
+    isLoading: oauthLoading,
+    isProviderLoading,
+    error: oauthError,
+    clearError: clearOAuthError,
+    connect,
+    disconnect,
+    afterSave,
+  } = useOAuthIntegrations({ userId, active: open, items });
+  const displayError = error ?? oauthError;
+
   const hasChanges = useMemo(() => draftHasChanges(draft, items), [draft, items]);
-  const canSave = hasChanges && !isLoading && !isSaving && items.length > 0;
+  const canSave = hasChanges && !isLoading && !isSaving && !oauthLoading && items.length > 0;
+
+  const isRowDisabled = (item: IntegrationSummary) => {
+    if (isLoading || isSaving) {
+      return true;
+    }
+    const providerId = item.oauth?.provider_id;
+    return providerId ? isProviderLoading(providerId) : false;
+  };
 
   useEffect(() => {
     itemsRef.current = items;
@@ -95,6 +117,7 @@ export function IntegrationsSection({ userId, hasActiveSession, open }: Integrat
     void (async () => {
       try {
         setError(null);
+        clearOAuthError();
         const response = await listIntegrations(userId, { signal });
         if (signal.aborted) {
           return;
@@ -112,19 +135,21 @@ export function IntegrationsSection({ userId, hasActiveSession, open }: Integrat
         }
       }
     })();
-  }, [userId]);
+  }, [clearOAuthError, userId]);
 
   const load = useCallback(() => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+    clearOAuthError();
     void fetchIntegrations(controller.signal);
-  }, [fetchIntegrations]);
+  }, [clearOAuthError, fetchIntegrations]);
 
   const resetDraft = useCallback(() => {
     setDraft(enabledMap(items));
     setError(null);
-  }, [items]);
+    clearOAuthError();
+  }, [clearOAuthError, items]);
 
   const save = useCallback(() => {
     const patches = buildPatches(draft, items);
@@ -138,6 +163,7 @@ export function IntegrationsSection({ userId, hasActiveSession, open }: Integrat
 
     setIsSaving(true);
     setError(null);
+    clearOAuthError();
 
     void (async () => {
       try {
@@ -149,6 +175,7 @@ export function IntegrationsSection({ userId, hasActiveSession, open }: Integrat
         }
         setItems(response.integrations);
         setDraft(enabledMap(response.integrations));
+        await afterSave(patches, response.integrations);
       } catch (saveError) {
         if (controller.signal.aborted) {
           return;
@@ -160,7 +187,7 @@ export function IntegrationsSection({ userId, hasActiveSession, open }: Integrat
         }
       }
     })();
-  }, [draft, items, userId]);
+  }, [afterSave, draft, items, clearOAuthError, userId]);
 
   useEffect(() => {
     if (!open) {
@@ -188,9 +215,9 @@ export function IntegrationsSection({ userId, hasActiveSession, open }: Integrat
         Integrations
       </h3>
 
-      {error ? (
+      {displayError ? (
         <div className={styles.errorBlock} role="alert">
-          <p className={styles.errorText}>{error}</p>
+          <p className={styles.errorText}>{displayError}</p>
           <button type="button" className={styles.retryButton} onClick={load}>
             Try again
           </button>
@@ -199,15 +226,17 @@ export function IntegrationsSection({ userId, hasActiveSession, open }: Integrat
 
       {isLoading && items.length === 0 ? <SkeletonRows /> : null}
 
-      {!isLoading && items.length === 0 && !error ? (
+      {!isLoading && items.length === 0 && !displayError ? (
         <p className={styles.empty}>No integrations are registered on this server.</p>
       ) : null}
 
       {items.length > 0 ? (
-        <ul className={styles.list} aria-busy={isLoading || isSaving}>
+        <ul className={styles.list} aria-busy={isLoading || isSaving || oauthLoading}>
           {items.map((item) => {
             const hint = integrationHint(item.id);
             const toggleId = `${sectionId}-${item.id}`;
+            const draftEnabled = draft[item.id] ?? item.enabled;
+            const providerId = item.oauth?.provider_id;
             return (
               <li key={item.id} className={styles.item}>
                 <label className={styles.toggle} htmlFor={toggleId}>
@@ -215,13 +244,25 @@ export function IntegrationsSection({ userId, hasActiveSession, open }: Integrat
                     id={toggleId}
                     className={styles.toggleInput}
                     type="checkbox"
-                    checked={draft[item.id] ?? item.enabled}
-                    disabled={isLoading || isSaving}
+                    checked={draftEnabled}
+                    disabled={isRowDisabled(item)}
                     onChange={(event) => setEnabled(item.id, event.target.checked)}
                   />
                   <span className={styles.toggleLabel}>{item.label}</span>
                 </label>
                 {hint ? <p className={styles.hint}>{hint}</p> : null}
+                {item.oauth ? (
+                  <OAuthIntegrationActions
+                    oauth={item.oauth}
+                    enabled={draftEnabled}
+                    status={providerId ? statusByProvider[providerId] : undefined}
+                    disabled={isRowDisabled(item)}
+                    onConnect={connect}
+                    onDisconnect={(provider) => {
+                      void disconnect(provider);
+                    }}
+                  />
+                ) : null}
               </li>
             );
           })}

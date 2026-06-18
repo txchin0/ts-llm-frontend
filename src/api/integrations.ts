@@ -8,6 +8,7 @@ export interface IntegrationSummary {
   label: string;
   default_enabled: boolean;
   enabled: boolean;
+  oauth?: { provider_id: string };
 }
 
 export interface ListIntegrationsResponse {
