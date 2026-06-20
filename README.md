@@ -21,6 +21,8 @@ Built with React + TypeScript + Vite. UI designed via the impeccable workflow
 - No conversation persistence. Only your `user_id` and theme preference are
   saved (in `localStorage`).
 - Responsive and touch-friendly; safe-area aware on phones.
+- Installable as a PWA (Add to Home Screen). Offline shell only — chat still
+  needs a live `/v1` connection to the agent server.
 
 ## Prerequisites
 
@@ -78,6 +80,24 @@ VITE_TS_LLM_TARGET=http://127.0.0.1:3001 npm run dev   # terminal 2
 ```
 
 The mock is a dev aid only; it is not a real agent.
+
+## PWA (installable web app)
+
+Ember can be installed on phones and desktops (Add to Home Screen / Install).
+
+- **Manifest** — `public/manifest.webmanifest` is generated from
+  [`src/brand.ts`](src/brand.ts) when you run `npm run dev` or `npm run build`.
+  Edit product metadata and shell colors there, not in `vite.config.ts`.
+- **Service worker** — `vite-plugin-pwa` registers with `autoUpdate` so new
+  builds replace the cached app shell on the next visit.
+- **API traffic** — the service worker does not cache `/v1`; chat requests still
+  go to the agent server (proxied in dev and production).
+- **Theme** — install splash uses the dark brand shell (`#191512`, matching the
+  icon). After load, `theme-color` tracks your resolved light/dark preference.
+- **Production** — `npm run serve` (`proxy.mjs`) serves `dist/` including the
+  manifest, icons, and generated `sw.js`.
+- **Icons** — PNGs in `public/` can be recompressed after replacement with
+  `npx --yes -p sharp node scripts/compress-public-pngs.mjs`.
 
 ## Production
 
@@ -145,8 +165,10 @@ src/
   components/ Header, Transcript, Message, ThinkingPanel, ToolChip,
               Composer, UserIdDialog, icons
   styles/     design tokens + global styles
+  brand.ts    product name, description, PWA manifest source
 PRODUCT.md    strategy / register (impeccable)
 DESIGN.md     visual system: palette, type, motion (impeccable)
+public/       favicon, PWA icons, generated manifest.webmanifest
 proxy.mjs     production static + /v1 reverse proxy
 mock-server.mjs  dev-only mock of POST /v1/respond
 ```

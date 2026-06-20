@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { THEME_DARK_HEX, THEME_LIGHT_HEX } from '../brand.ts';
 import { useSettings } from './useSettings.ts';
 
 function createStorage(): Storage {
@@ -44,12 +45,17 @@ describe('useSettings', () => {
         dispatchEvent: vi.fn(),
       })),
     );
+    document.head.insertAdjacentHTML(
+      'beforeend',
+      '<meta name="theme-color" content="#191512" id="theme-color-meta" />',
+    );
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
     document.documentElement.removeAttribute('data-theme');
     document.documentElement.style.removeProperty('color-scheme');
+    document.querySelector('#theme-color-meta')?.remove();
   });
 
   it('persists user id updates', () => {
@@ -69,6 +75,9 @@ describe('useSettings', () => {
     expect(result.current.theme).toBe('system');
     expect(result.current.resolvedTheme).toBe('dark');
     expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(document.querySelector<HTMLMetaElement>('#theme-color-meta')?.content).toBe(
+      THEME_DARK_HEX,
+    );
   });
 
   it('applies explicit light theme', () => {
@@ -81,6 +90,9 @@ describe('useSettings', () => {
     expect(result.current.resolvedTheme).toBe('light');
     expect(document.documentElement.dataset.theme).toBe('light');
     expect(storage.getItem('ts-llm.theme')).toBe('light');
+    expect(document.querySelector<HTMLMetaElement>('#theme-color-meta')?.content).toBe(
+      THEME_LIGHT_HEX,
+    );
   });
 
   it('persists mic language preference', () => {

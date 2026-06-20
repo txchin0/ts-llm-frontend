@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <radialGradient id="ember" cx="50%" cy="68%" r="62%">
+      <stop offset="0%" stop-color="#ffcf8a" />
+      <stop offset="42%" stop-color="#f0a050" />
+      <stop offset="78%" stop-color="#d8642a" />
+      <stop offset="100%" stop-color="#b84a1c" />
+    </radialGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#191512" />
+  <path
+    fill="url(#ember)"
+    d="M32 8c2 7-3 11-7 15-5 5-9 10-9 17 0 9 7 16 16 16s16-7 16-16c0-6-3-10-6-14-1 4-3 6-6 7 3-9-1-17-4-25-2 6-6 9-9 13 1-7 7-9 9-13z"
+  />
+</svg>

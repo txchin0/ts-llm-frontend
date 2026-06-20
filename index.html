@@ -7,12 +7,17 @@
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0"
     />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#191512" media="(prefers-color-scheme: dark)" />
+    <!-- theme-color: updated at runtime by useSettings; default matches dark --bg -->
+    <meta name="theme-color" content="#191512" id="theme-color-meta" />
+    <!-- description: keep aligned with src/brand.ts -->
     <meta
       name="description"
       content="A warm, fast chat interface for the ts-llm agent server."
     />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- manifest: generated from src/brand.ts; SW registration injected by vite-plugin-pwa -->
+    <link rel="manifest" href="/manifest.webmanifest" />
     <title>Ember · ts-llm</title>
   </head>
   <body>

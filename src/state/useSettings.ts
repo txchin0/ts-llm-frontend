@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { themeColorHex } from '../brand.ts';
 import {
   isMicLanguagePreference,
   type MicLanguagePreference,
@@ -47,6 +48,13 @@ function prefersDark(): boolean {
     typeof window.matchMedia === 'function' &&
     window.matchMedia('(prefers-color-scheme: dark)').matches
   );
+}
+
+function syncThemeColorMeta(theme: ResolvedTheme): void {
+  const meta = document.querySelector<HTMLMetaElement>('#theme-color-meta');
+  if (meta) {
+    meta.content = themeColorHex(theme);
+  }
 }
 
 export interface Settings {
@@ -107,6 +115,7 @@ export function useSettings(): Settings {
     const root = document.documentElement;
     root.dataset.theme = resolvedTheme;
     root.style.colorScheme = resolvedTheme;
+    syncThemeColorMeta(resolvedTheme);
   }, [resolvedTheme]);
 
   const setUserId = useCallback((next: string) => {
