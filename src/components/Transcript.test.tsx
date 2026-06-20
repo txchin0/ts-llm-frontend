@@ -9,7 +9,15 @@ describe('Transcript', () => {
     render(<Transcript messages={[]} showThinking userId="demo-user" />);
 
     expect(screen.getByText('Good to see you.')).toBeInTheDocument();
+    expect(screen.getByText(/thinking steps/i)).toBeInTheDocument();
     expect(screen.getByText('demo-user')).toBeInTheDocument();
+  });
+
+  it('hides thinking cues in the empty state when showThinking is false', () => {
+    render(<Transcript messages={[]} showThinking={false} userId="demo-user" />);
+
+    expect(screen.getByText('Good to see you.')).toBeInTheDocument();
+    expect(screen.queryByText(/thinking steps/i)).not.toBeInTheDocument();
   });
 
   it('renders one row per message', () => {

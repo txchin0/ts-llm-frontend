@@ -1,6 +1,5 @@
 import type { ThemePreference } from '../state/useSettings.ts';
 import {
-  BrainIcon,
   MonitorIcon,
   MoonIcon,
   PlusIcon,
@@ -15,8 +14,6 @@ interface HeaderProps {
   userId: string;
   theme: ThemePreference;
   onSetTheme: (theme: ThemePreference) => void;
-  showThinking: boolean;
-  onToggleThinking: () => void;
   hasSession: boolean;
   onNewChat: () => void;
   onOpenUserDialog: () => void;
@@ -39,8 +36,6 @@ export function Header({
   userId,
   theme,
   onSetTheme,
-  showThinking,
-  onToggleThinking,
   hasSession,
   onNewChat,
   onOpenUserDialog,
@@ -52,7 +47,6 @@ export function Header({
   };
 
   const ThemeIcon = theme === 'light' ? SunIcon : theme === 'dark' ? MoonIcon : MonitorIcon;
-  const thinkingLabel = showThinking ? 'Hide thinking steps' : 'Show thinking steps';
   return (
     <header className={styles.header}>
       <div className={styles.inner}>
@@ -69,17 +63,6 @@ export function Header({
         </div>
 
         <div className={styles.controls}>
-          <IconButton
-            className={styles.overflowToSettings}
-            label={thinkingLabel}
-            visibleLabel="Thinking"
-            showLabel
-            aria-pressed={showThinking}
-            onClick={onToggleThinking}
-          >
-            <BrainIcon />
-          </IconButton>
-
           <IconButton
             className={styles.overflowToSettings}
             label={`${THEME_LABEL[theme]}. Currently ${THEME_SHORT[theme].toLowerCase()}.`}

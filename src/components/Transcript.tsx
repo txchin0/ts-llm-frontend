@@ -33,13 +33,15 @@ export function Transcript({ messages, showThinking, userId }: TranscriptProps) 
     return (
       <div className={styles.empty}>
         <div className={styles.emptyInner}>
-          <span className={styles.emptyMark}>
-            <BrainIcon width={22} height={22} />
-          </span>
+          {showThinking ? (
+            <span className={styles.emptyMark}>
+              <BrainIcon width={22} height={22} />
+            </span>
+          ) : null}
           <h1 className={styles.emptyTitle}>Good to see you.</h1>
           <p className={styles.emptyText}>
-            Ask anything. Answers stream in as they are written, with thinking steps and
-            tool use shown along the way.
+            Ask anything. Answers stream in as they are written, with
+            {showThinking ? ' thinking steps and' : ''} tool use shown along the way.
           </p>
           <p className={styles.emptySetup}>
             The agent server must be running. In dev, start it and use the Vite proxy, or

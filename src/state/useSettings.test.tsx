@@ -93,4 +93,37 @@ describe('useSettings', () => {
     expect(result.current.micLanguage).toBe('de-DE');
     expect(storage.getItem('ts-llm.mic_language')).toBe('de-DE');
   });
+
+  it('defaults showThinking to false when no stored value', () => {
+    const { result } = renderHook(() => useSettings());
+
+    expect(result.current.showThinking).toBe(false);
+  });
+
+  it('persists showThinking updates', () => {
+    const { result } = renderHook(() => useSettings());
+
+    act(() => {
+      result.current.setShowThinking(true);
+    });
+
+    expect(result.current.showThinking).toBe(true);
+    expect(storage.getItem('ts-llm.show_thinking')).toBe('true');
+  });
+
+  it('reads stored showThinking on init', () => {
+    storage.setItem('ts-llm.show_thinking', 'true');
+
+    const { result } = renderHook(() => useSettings());
+
+    expect(result.current.showThinking).toBe(true);
+  });
+
+  it('defaults showThinking to false for invalid stored values', () => {
+    storage.setItem('ts-llm.show_thinking', 'yes');
+
+    const { result } = renderHook(() => useSettings());
+
+    expect(result.current.showThinking).toBe(false);
+  });
 });

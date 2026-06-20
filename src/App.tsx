@@ -15,11 +15,11 @@ import { useSpeechInput } from './voice/useSpeechInput.ts';
 import styles from './App.module.css';
 
 export function App() {
-  const { userId, setUserId, theme, setTheme, micLanguage, setMicLanguage } = useSettings();
+  const { userId, setUserId, theme, setTheme, micLanguage, setMicLanguage, showThinking, setShowThinking } =
+    useSettings();
   const { messages, isStreaming, hasSession, send, stop, reset } = useChat({ userId });
 
   const [input, setInput] = useState('');
-  const [showThinking, setShowThinking] = useState(true);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tasksExpanded, setTasksExpanded] = useState(false);
@@ -92,8 +92,6 @@ export function App() {
         userId={userId}
         theme={theme}
         onSetTheme={setTheme}
-        showThinking={showThinking}
-        onToggleThinking={() => setShowThinking((value) => !value)}
         hasSession={hasActiveSession}
         onNewChat={handleNewChat}
         onOpenUserDialog={() => setUserDialogOpen(true)}
