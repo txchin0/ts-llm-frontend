@@ -1,3 +1,4 @@
+import { APP_NAME } from '../brand.ts';
 import type { ThemePreference } from '../state/useSettings.ts';
 import {
   MonitorIcon,
@@ -52,7 +53,7 @@ export function Header({
       <div className={styles.inner}>
         <div className={styles.brand}>
           <span className={styles.wordmark}>
-            Ember<span className={styles.wordmarkDot}>.</span>
+            {APP_NAME}<span className={styles.wordmarkDot}>.</span>
           </span>
           {hasSession ? (
             <>
