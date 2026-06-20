@@ -3,7 +3,8 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
-import { emitPwaManifestPlugin } from './vite/emit-pwa-manifest';
+import { pwaManifest } from './src/brand';
+import { brandHtmlPlugin } from './vite/brand-html';
 
 // The ts-llm agent server has no CORS, so in dev we proxy `/v1` to it,
 // keeping the browser on a single origin. Override the target with
@@ -14,12 +15,12 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [
-      emitPwaManifestPlugin(),
+      brandHtmlPlugin(),
       react(),
       VitePWA({
         registerType: 'autoUpdate',
-        manifest: false,
-        includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'manifest.webmanifest'],
+        manifest: pwaManifest,
+        includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
         workbox: {
           navigateFallbackDenylist: [/^\/v1/],
         },

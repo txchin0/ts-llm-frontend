@@ -50,8 +50,12 @@ function prefersDark(): boolean {
   );
 }
 
-function syncThemeColorMeta(theme: ResolvedTheme): void {
-  const meta = document.querySelector<HTMLMetaElement>('#theme-color-meta');
+function applyResolvedTheme(theme: ResolvedTheme): void {
+  const root = document.documentElement;
+  root.dataset.theme = theme;
+  root.style.colorScheme = theme;
+
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
   if (meta) {
     meta.content = themeColorHex(theme);
   }
@@ -112,10 +116,7 @@ export function useSettings(): Settings {
   }, [theme, systemDark]);
 
   useEffect(() => {
-    const root = document.documentElement;
-    root.dataset.theme = resolvedTheme;
-    root.style.colorScheme = resolvedTheme;
-    syncThemeColorMeta(resolvedTheme);
+    applyResolvedTheme(resolvedTheme);
   }, [resolvedTheme]);
 
   const setUserId = useCallback((next: string) => {

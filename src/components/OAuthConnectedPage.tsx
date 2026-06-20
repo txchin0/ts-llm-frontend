@@ -4,6 +4,7 @@ import {
   oauthCallbackErrorMessage,
   parseOAuthConnectedParams,
 } from '../api/oauth.ts';
+import { brandPageTitle } from '../brand.ts';
 import { useSettings } from '../state/useSettings.ts';
 import { AlertIcon, CheckIcon } from './icons.tsx';
 import styles from './OAuthConnectedPage.module.css';
@@ -28,7 +29,9 @@ export function OAuthConnectedPage() {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    document.title = isError ? 'Connection failed · Ember' : 'Connected · Ember';
+    document.title = isError
+      ? brandPageTitle('Connection failed')
+      : brandPageTitle('Connected');
   }, [isError]);
 
   useEffect(() => {

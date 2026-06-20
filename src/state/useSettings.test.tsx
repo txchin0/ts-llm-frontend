@@ -47,7 +47,7 @@ describe('useSettings', () => {
     );
     document.head.insertAdjacentHTML(
       'beforeend',
-      '<meta name="theme-color" content="#191512" id="theme-color-meta" />',
+      `<meta name="theme-color" content="${THEME_DARK_HEX}" />`,
     );
   });
 
@@ -55,7 +55,7 @@ describe('useSettings', () => {
     vi.unstubAllGlobals();
     document.documentElement.removeAttribute('data-theme');
     document.documentElement.style.removeProperty('color-scheme');
-    document.querySelector('#theme-color-meta')?.remove();
+    document.querySelector('meta[name="theme-color"]')?.remove();
   });
 
   it('persists user id updates', () => {
@@ -75,7 +75,7 @@ describe('useSettings', () => {
     expect(result.current.theme).toBe('system');
     expect(result.current.resolvedTheme).toBe('dark');
     expect(document.documentElement.dataset.theme).toBe('dark');
-    expect(document.querySelector<HTMLMetaElement>('#theme-color-meta')?.content).toBe(
+    expect(document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.content).toBe(
       THEME_DARK_HEX,
     );
   });
@@ -90,7 +90,7 @@ describe('useSettings', () => {
     expect(result.current.resolvedTheme).toBe('light');
     expect(document.documentElement.dataset.theme).toBe('light');
     expect(storage.getItem('ts-llm.theme')).toBe('light');
-    expect(document.querySelector<HTMLMetaElement>('#theme-color-meta')?.content).toBe(
+    expect(document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.content).toBe(
       THEME_LIGHT_HEX,
     );
   });

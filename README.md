@@ -85,9 +85,9 @@ The mock is a dev aid only; it is not a real agent.
 
 Ember can be installed on phones and desktops (Add to Home Screen / Install).
 
-- **Manifest** — `public/manifest.webmanifest` is generated from
-  [`src/brand.ts`](src/brand.ts) when you run `npm run dev` or `npm run build`.
-  Edit product metadata and shell colors there, not in `vite.config.ts`.
+- **Manifest** — [`src/brand.ts`](src/brand.ts) is the single source for product
+  metadata and PWA manifest fields. `vite-plugin-pwa` emits the manifest at
+  dev/build time; edit `pwaManifest` there, not in `vite.config.ts`.
 - **Service worker** — `vite-plugin-pwa` registers with `autoUpdate` so new
   builds replace the cached app shell on the next visit.
 - **API traffic** — the service worker does not cache `/v1`; chat requests still
@@ -97,7 +97,7 @@ Ember can be installed on phones and desktops (Add to Home Screen / Install).
 - **Production** — `npm run serve` (`proxy.mjs`) serves `dist/` including the
   manifest, icons, and generated `sw.js`.
 - **Icons** — PNGs in `public/` can be recompressed after replacement with
-  `npx --yes -p sharp node scripts/compress-public-pngs.mjs`.
+  `npm run compress:icons`.
 
 ## Production
 
@@ -168,7 +168,7 @@ src/
   brand.ts    product name, description, PWA manifest source
 PRODUCT.md    strategy / register (impeccable)
 DESIGN.md     visual system: palette, type, motion (impeccable)
-public/       favicon, PWA icons, generated manifest.webmanifest
+public/       favicon, PWA icons
 proxy.mjs     production static + /v1 reverse proxy
 mock-server.mjs  dev-only mock of POST /v1/respond
 ```
