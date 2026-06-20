@@ -1,6 +1,9 @@
 /// <reference types="vitest/config" />
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
+
+import { emitPwaManifestPlugin } from './vite/emit-pwa-manifest';
 
 // The ts-llm agent server has no CORS, so in dev we proxy `/v1` to it,
 // keeping the browser on a single origin. Override the target with
@@ -10,7 +13,18 @@ export default defineConfig(({ mode }) => {
   const target = env.VITE_TS_LLM_TARGET ?? 'http://127.0.0.1:3000';
 
   return {
-    plugins: [react()],
+    plugins: [
+      emitPwaManifestPlugin(),
+      react(),
+      VitePWA({
+        registerType: 'autoUpdate',
+        manifest: false,
+        includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'manifest.webmanifest'],
+        workbox: {
+          navigateFallbackDenylist: [/^\/v1/],
+        },
+      }),
+    ],
     server: {
       // Expose on the LAN so phones/tablets can reach the dev server.
       host: true,
