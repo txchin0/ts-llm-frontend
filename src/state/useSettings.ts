@@ -11,6 +11,7 @@ export type ResolvedTheme = 'light' | 'dark';
 const USER_ID_KEY = 'ts-llm.user_id';
 const THEME_KEY = 'ts-llm.theme';
 const MIC_LANGUAGE_KEY = 'ts-llm.mic_language';
+const SHOW_THINKING_KEY = 'ts-llm.show_thinking';
 const DEFAULT_USER_ID = 'web-user';
 
 function readStored(key: string): string | null {
@@ -33,6 +34,13 @@ function isThemePreference(value: string | null): value is ThemePreference {
   return value === 'light' || value === 'dark' || value === 'system';
 }
 
+function readStoredBoolean(key: string, defaultValue: boolean): boolean {
+  const stored = readStored(key);
+  if (stored === 'true') return true;
+  if (stored === 'false') return false;
+  return defaultValue;
+}
+
 function prefersDark(): boolean {
   return (
     typeof window !== 'undefined' &&
@@ -50,12 +58,14 @@ export interface Settings {
   resolvedTheme: ResolvedTheme;
   micLanguage: MicLanguagePreference;
   setMicLanguage: (next: MicLanguagePreference) => void;
+  showThinking: boolean;
+  setShowThinking: (next: boolean) => void;
 }
 
 /**
- * Holds persisted app preferences: user id, theme, and voice input language.
- * Conversations are never stored. Applies the resolved theme to the document
- * root so CSS tokens can switch via `[data-theme]`.
+ * Holds persisted app preferences: user id, theme, thinking visibility, and
+ * voice input language. Conversations are never stored. Applies the resolved
+ * theme to the document root so CSS tokens can switch via `[data-theme]`.
  */
 export function useSettings(): Settings {
   const [userId, setUserIdState] = useState<string>(
@@ -71,6 +81,10 @@ export function useSettings(): Settings {
     const stored = readStored(MIC_LANGUAGE_KEY);
     return isMicLanguagePreference(stored) ? stored : 'system';
   });
+
+  const [showThinking, setShowThinkingState] = useState<boolean>(() =>
+    readStoredBoolean(SHOW_THINKING_KEY, false),
+  );
 
   const [systemDark, setSystemDark] = useState<boolean>(prefersDark);
 
@@ -112,5 +126,20 @@ export function useSettings(): Settings {
     writeStored(MIC_LANGUAGE_KEY, next);
   }, []);
 
-  return { userId, setUserId, theme, setTheme, resolvedTheme, micLanguage, setMicLanguage };
+  const setShowThinking = useCallback((next: boolean) => {
+    setShowThinkingState(next);
+    writeStored(SHOW_THINKING_KEY, next ? 'true' : 'false');
+  }, []);
+
+  return {
+    userId,
+    setUserId,
+    theme,
+    setTheme,
+    resolvedTheme,
+    micLanguage,
+    setMicLanguage,
+    showThinking,
+    setShowThinking,
+  };
 }

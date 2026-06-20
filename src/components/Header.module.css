@@ -108,7 +108,7 @@
   margin-inline: var(--space-1);
 }
 
-/* Thinking + theme stay in the header on wider screens; narrow phones use Settings. */
+/* Theme stays in the header on wider screens; narrow phones use Settings. */
 @media (max-width: 480px) {
   .overflowToSettings {
     display: none;
