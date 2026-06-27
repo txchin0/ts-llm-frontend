@@ -24,6 +24,12 @@ export interface UseChat {
   reset: () => void;
 }
 
+export function selectLatestAssistant(
+  messages: ChatMessage[],
+): AssistantMessage | undefined {
+  return messages.findLast((message): message is AssistantMessage => message.role === 'assistant');
+}
+
 export function useChat({ userId }: UseChatOptions): UseChat {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);

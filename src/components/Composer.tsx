@@ -5,7 +5,7 @@ import {
   type KeyboardEvent,
 } from 'react';
 
-import { ArrowUpIcon, MicIcon, StopIcon } from './icons.tsx';
+import { ArrowUpIcon, HandsFreeIcon, MicIcon, StopIcon } from './icons.tsx';
 import { IconButton } from './IconButton.tsx';
 import styles from './Composer.module.css';
 
@@ -19,6 +19,7 @@ interface ComposerProps {
   isListening: boolean;
   voiceError: string | null;
   onToggleVoice: () => void;
+  onEnterHandsFree?: () => void;
 }
 
 export function Composer({
@@ -31,6 +32,7 @@ export function Composer({
   isListening,
   voiceError,
   onToggleVoice,
+  onEnterHandsFree,
 }: ComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -73,6 +75,15 @@ export function Composer({
             spellCheck
           />
           <div className={styles.actions}>
+            {voiceSupported && onEnterHandsFree ? (
+              <IconButton
+                label="Enter hands-free mode"
+                className={styles.handsFree}
+                onClick={onEnterHandsFree}
+              >
+                <HandsFreeIcon />
+              </IconButton>
+            ) : null}
             {voiceSupported ? (
               <IconButton
                 label={isListening ? 'Stop voice input' : 'Start voice input'}
