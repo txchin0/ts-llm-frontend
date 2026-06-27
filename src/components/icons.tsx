@@ -83,6 +83,17 @@ export function MicIcon(props: IconProps) {
   );
 }
 
+export function HandsFreeIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 3a3 3 0 0 0-3 3v4.5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
+      <path d="M6.5 10.5a5.5 5.5 0 0 0 11 0" />
+      <path d="M4 14.5a8 8 0 0 0 16 0" />
+      <path d="M12 18.5V21" />
+    </Icon>
+  );
+}
+
 export function ArrowUpIcon(props: IconProps) {
   return (
     <Icon {...props}>

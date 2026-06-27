@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiHttpError } from '../api/client.ts';
 import type { RespondStreamEvent } from '../api/client.ts';
-import { useChat } from './useChat.ts';
+import { useChat, selectLatestAssistant } from './useChat.ts';
 
 const respondStreamMock = vi.hoisted(() => vi.fn());
 
@@ -170,5 +170,41 @@ describe('useChat', () => {
       usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15 },
       status: 'complete',
     });
+  });
+});
+
+describe('selectLatestAssistant', () => {
+  it('returns the last assistant message', () => {
+    const latest = selectLatestAssistant([
+      { id: '1', role: 'user', content: 'Hi', createdAt: 1 },
+      {
+        id: '2',
+        role: 'assistant',
+        content: 'First',
+        thinking: '',
+        tools: [],
+        status: 'complete',
+        createdAt: 2,
+      },
+      { id: '3', role: 'user', content: 'Again', createdAt: 3 },
+      {
+        id: '4',
+        role: 'assistant',
+        content: 'Latest',
+        thinking: '',
+        tools: [],
+        status: 'streaming',
+        createdAt: 4,
+      },
+    ]);
+
+    expect(latest?.content).toBe('Latest');
+    expect(latest?.status).toBe('streaming');
+  });
+
+  it('returns undefined when no assistant messages exist', () => {
+    expect(
+      selectLatestAssistant([{ id: '1', role: 'user', content: 'Hi', createdAt: 1 }]),
+    ).toBeUndefined();
   });
 });

@@ -85,6 +85,14 @@
   background: var(--danger);
 }
 
+.handsFree {
+  color: var(--primary-ink);
+}
+
+.handsFree:hover {
+  background: var(--primary-wash);
+}
+
 .send {
   display: inline-flex;
   align-items: center;
