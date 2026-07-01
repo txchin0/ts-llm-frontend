@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { Message } from './Message.tsx';
-import { makeAssistantMessage } from '../test/fixtures/chat.ts';
+import { makeAssistantMessage, makeToolActivity } from '../test/fixtures/chat.ts';
 
 describe('Message', () => {
   it('renders user bubble text', () => {
@@ -10,6 +10,7 @@ describe('Message', () => {
       <Message
         message={{ id: 'u1', role: 'user', content: 'Hello there', createdAt: 0 }}
         showThinking
+        showToolCalls
       />,
     );
 
@@ -17,7 +18,9 @@ describe('Message', () => {
   });
 
   it('shows streaming dots while assistant content is empty', () => {
-    render(<Message message={makeAssistantMessage({ status: 'streaming' })} showThinking />);
+    render(
+      <Message message={makeAssistantMessage({ status: 'streaming' })} showThinking showToolCalls />,
+    );
 
     expect(screen.getByText('Agent')).toBeInTheDocument();
     expect(screen.queryByText('Generation stopped.')).not.toBeInTheDocument();
@@ -31,6 +34,7 @@ describe('Message', () => {
           content: 'Answer text',
         })}
         showThinking
+        showToolCalls
       />,
     );
 
@@ -45,6 +49,7 @@ describe('Message', () => {
           status: 'streaming',
         })}
         showThinking
+        showToolCalls
       />,
     );
 
@@ -60,10 +65,41 @@ describe('Message', () => {
           status: 'complete',
         })}
         showThinking={false}
+        showToolCalls
       />,
     );
 
     expect(screen.queryByText('Reasoning steps')).not.toBeInTheDocument();
+  });
+
+  it('renders tool calls when showToolCalls is true', () => {
+    render(
+      <Message
+        message={makeAssistantMessage({
+          status: 'complete',
+          tools: [makeToolActivity({ toolName: 'web_search' })],
+        })}
+        showThinking
+        showToolCalls
+      />,
+    );
+
+    expect(screen.getByText('web_search')).toBeInTheDocument();
+  });
+
+  it('hides tool calls when showToolCalls is false', () => {
+    render(
+      <Message
+        message={makeAssistantMessage({
+          status: 'complete',
+          tools: [makeToolActivity({ toolName: 'web_search' })],
+        })}
+        showThinking
+        showToolCalls={false}
+      />,
+    );
+
+    expect(screen.queryByText('web_search')).not.toBeInTheDocument();
   });
 
   it('renders error alert with technical details for non-client errors', () => {
@@ -74,6 +110,7 @@ describe('Message', () => {
           error: { code: 'provider_error', message: 'Provider unavailable' },
         })}
         showThinking
+        showToolCalls
       />,
     );
 
