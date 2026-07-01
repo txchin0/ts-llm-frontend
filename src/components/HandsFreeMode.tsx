@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 
 import type { AssistantMessage } from '../state/types.ts';
 import type { MicState } from '../state/useHandsFree.ts';
@@ -7,7 +7,6 @@ import { IconButton } from './IconButton.tsx';
 import { Markdown } from './Markdown.tsx';
 import { MicButton } from './MicButton.tsx';
 import { StreamingDots } from './StreamingDots.tsx';
-import { useSwipeDismiss } from './useSwipeDismiss.ts';
 import styles from './HandsFreeMode.module.css';
 
 export interface HandsFreeModeProps {
@@ -30,13 +29,14 @@ export function HandsFreeMode({
   voiceSupported,
 }: HandsFreeModeProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const { bind, panelRef } = useSwipeDismiss({ onDismiss: onClose, enabled: open });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
-
     if (open && !dialog.open) {
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
       dialog.showModal();
     } else if (!open && dialog.open) {
       dialog.close();
@@ -51,19 +51,12 @@ export function HandsFreeMode({
     <dialog
       ref={dialogRef}
       className={styles.dialog}
-      onCancel={onClose}
       onClose={onClose}
       aria-label="Hands-free mode"
     >
-      <div
-        ref={panelRef}
-        className={styles.panel}
-        {...bind}
-      >
+      <div className={styles.panel}>
         <div className={styles.topBar}>
-          <div className={styles.grabber} aria-hidden="true" />
           <IconButton
-            className={styles.dismiss}
             label="Exit hands-free mode"
             onClick={onClose}
           >
