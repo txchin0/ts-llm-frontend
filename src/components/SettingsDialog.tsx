@@ -14,6 +14,8 @@ interface SettingsDialogProps {
   onThemeChange: (next: ThemePreference) => void;
   showThinking: boolean;
   onShowThinkingChange: (next: boolean) => void;
+  showToolCalls: boolean;
+  onShowToolCallsChange: (next: boolean) => void;
   micLanguage: MicLanguagePreference;
   onMicLanguageChange: (next: MicLanguagePreference) => void;
   onClose: () => void;
@@ -33,6 +35,8 @@ export function SettingsDialog({
   onThemeChange,
   showThinking,
   onShowThinkingChange,
+  showToolCalls,
+  onShowToolCallsChange,
   micLanguage,
   onMicLanguageChange,
   onClose,
@@ -41,6 +45,7 @@ export function SettingsDialog({
   const displaySectionId = useId();
   const themeId = useId();
   const thinkingId = useId();
+  const toolCallsId = useId();
   const micLanguageId = useId();
 
   useEffect(() => {
@@ -104,6 +109,21 @@ export function SettingsDialog({
             </label>
             <p className={styles.hint}>
               When on, reasoning text appears above each answer while the agent works.
+            </p>
+          </div>
+          <div className={styles.field}>
+            <label className={styles.toggle} htmlFor={toolCallsId}>
+              <input
+                id={toolCallsId}
+                className={styles.toggleInput}
+                type="checkbox"
+                checked={showToolCalls}
+                onChange={(event) => onShowToolCallsChange(event.target.checked)}
+              />
+              <span className={styles.toggleLabel}>Show tool calls</span>
+            </label>
+            <p className={styles.hint}>
+              When on, tool calls the agent makes appear inline in the conversation.
             </p>
           </div>
         </section>

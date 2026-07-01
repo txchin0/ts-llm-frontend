@@ -8,10 +8,11 @@ import styles from './Transcript.module.css';
 interface TranscriptProps {
   messages: ChatMessage[];
   showThinking: boolean;
+  showToolCalls: boolean;
   userId: string;
 }
 
-export function Transcript({ messages, showThinking, userId }: TranscriptProps) {
+export function Transcript({ messages, showThinking, showToolCalls, userId }: TranscriptProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef(true);
 
@@ -59,7 +60,12 @@ export function Transcript({ messages, showThinking, userId }: TranscriptProps) 
     <div className={styles.scroll} ref={scrollRef} onScroll={handleScroll}>
       <div className={styles.column}>
         {messages.map((message) => (
-          <Message key={message.id} message={message} showThinking={showThinking} />
+          <Message
+            key={message.id}
+            message={message}
+            showThinking={showThinking}
+            showToolCalls={showToolCalls}
+          />
         ))}
       </div>
     </div>

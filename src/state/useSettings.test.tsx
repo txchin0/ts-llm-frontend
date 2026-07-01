@@ -138,4 +138,37 @@ describe('useSettings', () => {
 
     expect(result.current.showThinking).toBe(false);
   });
+
+  it('defaults showToolCalls to true when no stored value', () => {
+    const { result } = renderHook(() => useSettings());
+
+    expect(result.current.showToolCalls).toBe(true);
+  });
+
+  it('persists showToolCalls updates', () => {
+    const { result } = renderHook(() => useSettings());
+
+    act(() => {
+      result.current.setShowToolCalls(false);
+    });
+
+    expect(result.current.showToolCalls).toBe(false);
+    expect(storage.getItem('ts-llm.show_tool_calls')).toBe('false');
+  });
+
+  it('reads stored showToolCalls on init', () => {
+    storage.setItem('ts-llm.show_tool_calls', 'false');
+
+    const { result } = renderHook(() => useSettings());
+
+    expect(result.current.showToolCalls).toBe(false);
+  });
+
+  it('defaults showToolCalls to true for invalid stored values', () => {
+    storage.setItem('ts-llm.show_tool_calls', 'yes');
+
+    const { result } = renderHook(() => useSettings());
+
+    expect(result.current.showToolCalls).toBe(true);
+  });
 });
