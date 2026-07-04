@@ -46,6 +46,28 @@ describe('fetchJson', () => {
     );
   });
 
+  it('throws a clear ApiHttpError when a 2xx response is not JSON (got HTML)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          headers: { get: () => 'text/html' },
+          json: () => Promise.reject(new SyntaxError("Unexpected token '<'")),
+        } as unknown as Response),
+      ),
+    );
+
+    await expect(fetchJson('/v1/integrations')).rejects.toEqual(
+      expect.objectContaining<Partial<ApiHttpError>>({
+        status: 200,
+        message: expect.stringContaining('did not return JSON') as unknown as string,
+      }),
+    );
+  });
+
   it('throws ApiHttpError for other HTTP failures', async () => {
     vi.stubGlobal(
       'fetch',

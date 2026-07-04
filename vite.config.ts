@@ -18,6 +18,9 @@ export default defineConfig(({ mode }) => {
       brandHtmlPlugin(),
       react(),
       VitePWA({
+        // The native (Capacitor) build serves from a local origin, so a service
+        // worker caching that origin is pointless and causes stale assets.
+        disable: env.VITE_NATIVE_BUILD === 'true',
         registerType: 'autoUpdate',
         manifest: pwaManifest,
         includeAssets: ['favicon.svg', 'apple-touch-icon.png'],

@@ -2,6 +2,8 @@
 
 interface ImportMetaEnv {
   readonly VITE_TS_LLM_TARGET?: string;
+  /** Set to 'true' for the Capacitor/native build to disable the PWA service worker. */
+  readonly VITE_NATIVE_BUILD?: string;
 }
 
 interface ImportMeta {

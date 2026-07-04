@@ -69,6 +69,31 @@ describe('useSettings', () => {
     expect(storage.getItem('ts-llm.user_id')).toBe('alice');
   });
 
+  it('defaults serverUrl to empty when no stored value', () => {
+    const { result } = renderHook(() => useSettings());
+
+    expect(result.current.serverUrl).toBe('');
+  });
+
+  it('persists serverUrl updates (trimmed)', () => {
+    const { result } = renderHook(() => useSettings());
+
+    act(() => {
+      result.current.setServerUrl('  http://192.168.1.10:3000  ');
+    });
+
+    expect(result.current.serverUrl).toBe('http://192.168.1.10:3000');
+    expect(storage.getItem('ts-llm.server_url')).toBe('http://192.168.1.10:3000');
+  });
+
+  it('reads stored serverUrl on init', () => {
+    storage.setItem('ts-llm.server_url', 'http://host:3000');
+
+    const { result } = renderHook(() => useSettings());
+
+    expect(result.current.serverUrl).toBe('http://host:3000');
+  });
+
   it('resolves system theme from matchMedia', () => {
     const { result } = renderHook(() => useSettings());
 

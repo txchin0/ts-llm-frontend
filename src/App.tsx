@@ -17,7 +17,7 @@ import { useSpeechInput } from './voice/useSpeechInput.ts';
 import styles from './App.module.css';
 
 export function App() {
-  const { userId, setUserId, theme, setTheme, micLanguage, setMicLanguage, showThinking, setShowThinking, showToolCalls, setShowToolCalls } =
+  const { userId, setUserId, serverUrl, setServerUrl, theme, setTheme, micLanguage, setMicLanguage, showThinking, setShowThinking, showToolCalls, setShowToolCalls } =
     useSettings();
   const { messages, isStreaming, hasSession, send, stop, reset } = useChat({ userId });
 
@@ -186,6 +186,8 @@ export function App() {
         open={settingsOpen}
         userId={userId}
         hasActiveSession={hasActiveSession}
+        serverUrl={serverUrl}
+        onServerUrlChange={setServerUrl}
         theme={theme}
         onThemeChange={setTheme}
         showThinking={showThinking}
