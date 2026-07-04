@@ -11,3 +11,6 @@ dist-ssr
 *.log
 logs
 .vite
+
+# TypeScript incremental build cache (tsc -b)
+*.tsbuildinfo

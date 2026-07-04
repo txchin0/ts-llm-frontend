@@ -1,6 +1,6 @@
+import { getApiBaseUrl } from './config.ts';
 import { fetchJson } from './http.ts';
 
-const DEFAULT_BASE_URL = '';
 const TASKS_PATH = '/v1/tasks';
 
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed';
@@ -33,7 +33,7 @@ export async function listTasks(
   userId: string,
   options: ListTasksOptions = {},
 ): Promise<ListTasksResponse> {
-  const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
+  const baseUrl = options.baseUrl ?? getApiBaseUrl();
   const params = new URLSearchParams({ user_id: userId });
 
   return fetchJson<ListTasksResponse>(`${baseUrl}${TASKS_PATH}?${params}`, {

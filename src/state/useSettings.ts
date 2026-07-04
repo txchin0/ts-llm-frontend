@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { SERVER_URL_KEY } from '../api/config.ts';
 import { themeColorHex } from '../brand.ts';
 import {
   isMicLanguagePreference,
@@ -66,6 +67,9 @@ function applyResolvedTheme(theme: ResolvedTheme): void {
 export interface Settings {
   userId: string;
   setUserId: (next: string) => void;
+  /** Absolute agent-server URL. Empty = same origin (browser); set on native. */
+  serverUrl: string;
+  setServerUrl: (next: string) => void;
   theme: ThemePreference;
   setTheme: (next: ThemePreference) => void;
   /** The actual theme in effect after resolving `system`. */
@@ -86,6 +90,10 @@ export interface Settings {
 export function useSettings(): Settings {
   const [userId, setUserIdState] = useState<string>(
     () => readStored(USER_ID_KEY) ?? DEFAULT_USER_ID,
+  );
+
+  const [serverUrl, setServerUrlState] = useState<string>(
+    () => readStored(SERVER_URL_KEY) ?? '',
   );
 
   const [theme, setThemeState] = useState<ThemePreference>(() => {
@@ -134,6 +142,14 @@ export function useSettings(): Settings {
     writeStored(USER_ID_KEY, trimmed);
   }, []);
 
+  const setServerUrl = useCallback((next: string) => {
+    // Persist the raw (trimmed) value; getApiBaseUrl() owns URL normalization.
+    // Empty is allowed and resets to same-origin (relative) requests.
+    const trimmed = next.trim();
+    setServerUrlState(trimmed);
+    writeStored(SERVER_URL_KEY, trimmed);
+  }, []);
+
   const setTheme = useCallback((next: ThemePreference) => {
     setThemeState(next);
     writeStored(THEME_KEY, next);
@@ -157,6 +173,8 @@ export function useSettings(): Settings {
   return {
     userId,
     setUserId,
+    serverUrl,
+    setServerUrl,
     theme,
     setTheme,
     resolvedTheme,
