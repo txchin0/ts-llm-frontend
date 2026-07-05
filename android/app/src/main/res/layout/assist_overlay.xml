@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/assist_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Transparent scrim; tapping it dismisses the session. -->
+    <View
+        android:id="@+id/assist_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <LinearLayout
+        android:id="@+id/assist_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@drawable/assist_panel_bg"
+        android:elevation="12dp"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="20dp">
+
+        <app.ember.mobile.assist.MaxHeightScrollView
+            android:id="@+id/assist_response_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fadeScrollbars="true"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/assist_response"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingBottom="12dp"
+                android:textColor="@color/assist_text_primary"
+                android:textSize="16sp"
+                android:lineSpacingExtra="3dp" />
+        </app.ember.mobile.assist.MaxHeightScrollView>
+
+        <TextView
+            android:id="@+id/assist_transcript"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:paddingBottom="8dp"
+            android:textColor="@color/assist_text_dim"
+            android:textSize="15sp"
+            android:textStyle="italic"
+            android:visibility="gone" />
+
+        <app.ember.mobile.assist.FlameView
+            android:id="@+id/assist_flame"
+            android:layout_width="72dp"
+            android:layout_height="96dp"
+            android:layout_gravity="center_horizontal" />
+
+        <LinearLayout
+            android:id="@+id/assist_voice_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingTop="8dp">
+
+            <TextView
+                android:id="@+id/assist_status"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/assist_status_listening"
+                android:textColor="@color/assist_text_dim"
+                android:textSize="14sp" />
+
+            <ImageButton
+                android:id="@+id/assist_compose_button"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/assist_compose_hint"
+                android:src="@drawable/ic_assist_keyboard" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/assist_compose_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingTop="8dp"
+            android:visibility="gone">
+
+            <ImageButton
+                android:id="@+id/assist_mic_button"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/assist_voice_hint"
+                android:src="@drawable/ic_assist_mic" />
+
+            <EditText
+                android:id="@+id/assist_input"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/assist_input_bg"
+                android:hint="@string/assist_compose_placeholder"
+                android:imeOptions="actionSend"
+                android:importantForAutofill="no"
+                android:inputType="textCapSentences"
+                android:maxLines="4"
+                android:minHeight="44dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:textColor="@color/assist_text_primary"
+                android:textColorHint="@color/assist_text_dim"
+                android:textSize="15sp" />
+
+            <ImageButton
+                android:id="@+id/assist_send_button"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/assist_send_hint"
+                android:src="@drawable/ic_assist_send" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

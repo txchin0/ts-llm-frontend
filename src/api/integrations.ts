@@ -1,6 +1,6 @@
+import { getApiBaseUrl } from './config.ts';
 import { fetchJson } from './http.ts';
 
-const DEFAULT_BASE_URL = '';
 const INTEGRATIONS_PATH = '/v1/integrations';
 
 export interface IntegrationSummary {
@@ -29,7 +29,7 @@ export async function listIntegrations(
   userId: string,
   options: IntegrationsRequestOptions = {},
 ): Promise<ListIntegrationsResponse> {
-  const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
+  const baseUrl = options.baseUrl ?? getApiBaseUrl();
   const params = new URLSearchParams({ user_id: userId });
 
   return fetchJson<ListIntegrationsResponse>(`${baseUrl}${INTEGRATIONS_PATH}?${params}`, {
@@ -45,7 +45,7 @@ export async function updateIntegrations(
   patches: Record<string, IntegrationEnablementPatch>,
   options: IntegrationsRequestOptions = {},
 ): Promise<ListIntegrationsResponse> {
-  const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
+  const baseUrl = options.baseUrl ?? getApiBaseUrl();
 
   return fetchJson<ListIntegrationsResponse>(`${baseUrl}${INTEGRATIONS_PATH}`, {
     method: 'PUT',
