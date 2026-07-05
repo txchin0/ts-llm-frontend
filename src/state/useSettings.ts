@@ -3,6 +3,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SERVER_URL_KEY } from '../api/config.ts';
 import { themeColorHex } from '../brand.ts';
 import {
+  bootstrapNativeSettingsMirror,
+  mirrorSettingToNative,
+} from '../native/settingsMirror.ts';
+import {
   isMicLanguagePreference,
   type MicLanguagePreference,
 } from '../voice/speechLanguages.ts';
@@ -135,11 +139,16 @@ export function useSettings(): Settings {
     applyResolvedTheme(resolvedTheme);
   }, [resolvedTheme]);
 
+  useEffect(() => {
+    bootstrapNativeSettingsMirror();
+  }, []);
+
   const setUserId = useCallback((next: string) => {
     const trimmed = next.trim();
     if (trimmed.length === 0) return;
     setUserIdState(trimmed);
     writeStored(USER_ID_KEY, trimmed);
+    mirrorSettingToNative(USER_ID_KEY, trimmed);
   }, []);
 
   const setServerUrl = useCallback((next: string) => {
@@ -148,6 +157,7 @@ export function useSettings(): Settings {
     const trimmed = next.trim();
     setServerUrlState(trimmed);
     writeStored(SERVER_URL_KEY, trimmed);
+    mirrorSettingToNative(SERVER_URL_KEY, trimmed);
   }, []);
 
   const setTheme = useCallback((next: ThemePreference) => {
@@ -158,6 +168,7 @@ export function useSettings(): Settings {
   const setMicLanguage = useCallback((next: MicLanguagePreference) => {
     setMicLanguageState(next);
     writeStored(MIC_LANGUAGE_KEY, next);
+    mirrorSettingToNative(MIC_LANGUAGE_KEY, next);
   }, []);
 
   const setShowThinking = useCallback((next: boolean) => {

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches THEME_DARK_HEX in src/brand.ts, with alpha for the overlay card. -->
+    <color name="assist_panel_bg">#F2191512</color>
+    <color name="assist_text_primary">#F5EFE9</color>
+    <color name="assist_text_dim">#99F5EFE9</color>
+    <color name="assist_accent">#E25822</color>
+    <color name="assist_error">#E2685A</color>
+    <color name="assist_input_bg">#33F5EFE9</color>
+</resources>
