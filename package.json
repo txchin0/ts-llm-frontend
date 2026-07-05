@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:native": "cross-env VITE_NATIVE_BUILD=true npm run build",
+    "cap:sync": "npm run build:native && cap sync android",
+    "cap:open": "cap open android",
+    "cap:run": "npm run cap:sync && cap run android",
     "preview": "vite preview",
     "serve": "node proxy.mjs",
     "lint": "eslint .",
@@ -14,6 +18,10 @@
     "compress:icons": "node scripts/compress-public-pngs.mjs"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/preferences": "^8.0.1",
+    "@capgo/capacitor-speech-recognition": "^8.1.9",
     "@fontsource-variable/fraunces": "^5.2.9",
     "@fontsource-variable/hanken-grotesk": "^5.2.8",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
@@ -23,6 +31,7 @@
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.4.1",
     "@eslint/js": "^10.0.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -31,6 +40,7 @@
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
+    "cross-env": "^10.1.0",
     "eslint": "^10.4.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",

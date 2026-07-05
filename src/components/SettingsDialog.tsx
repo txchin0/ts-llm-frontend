@@ -10,10 +10,14 @@ interface SettingsDialogProps {
   open: boolean;
   userId: string;
   hasActiveSession: boolean;
+  serverUrl: string;
+  onServerUrlChange: (next: string) => void;
   theme: ThemePreference;
   onThemeChange: (next: ThemePreference) => void;
   showThinking: boolean;
   onShowThinkingChange: (next: boolean) => void;
+  showToolCalls: boolean;
+  onShowToolCallsChange: (next: boolean) => void;
   micLanguage: MicLanguagePreference;
   onMicLanguageChange: (next: MicLanguagePreference) => void;
   onClose: () => void;
@@ -29,18 +33,25 @@ export function SettingsDialog({
   open,
   userId,
   hasActiveSession,
+  serverUrl,
+  onServerUrlChange,
   theme,
   onThemeChange,
   showThinking,
   onShowThinkingChange,
+  showToolCalls,
+  onShowToolCallsChange,
   micLanguage,
   onMicLanguageChange,
   onClose,
 }: SettingsDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const displaySectionId = useId();
+  const serverSectionId = useId();
+  const serverUrlId = useId();
   const themeId = useId();
   const thinkingId = useId();
+  const toolCallsId = useId();
   const micLanguageId = useId();
 
   useEffect(() => {
@@ -68,6 +79,33 @@ export function SettingsDialog({
         <div className={styles.header}>
           <h2 className={styles.title}>Settings</h2>
         </div>
+
+        <section className={styles.section} aria-labelledby={serverSectionId}>
+          <h3 className={styles.sectionTitle} id={serverSectionId}>
+            Agent server
+          </h3>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor={serverUrlId}>
+              Server URL
+            </label>
+            <input
+              id={serverUrlId}
+              className={styles.input}
+              type="url"
+              inputMode="url"
+              value={serverUrl}
+              onChange={(event) => onServerUrlChange(event.target.value)}
+              placeholder="http://192.168.1.10:3000"
+              spellCheck={false}
+              autoComplete="off"
+              autoCapitalize="none"
+            />
+            <p className={styles.hint}>
+              Leave blank to use the current site. On the Android app, enter your ts-llm server&apos;s
+              address on your network.
+            </p>
+          </div>
+        </section>
 
         <section className={styles.section} aria-labelledby={displaySectionId}>
           <h3 className={styles.sectionTitle} id={displaySectionId}>
@@ -104,6 +142,21 @@ export function SettingsDialog({
             </label>
             <p className={styles.hint}>
               When on, reasoning text appears above each answer while the agent works.
+            </p>
+          </div>
+          <div className={styles.field}>
+            <label className={styles.toggle} htmlFor={toolCallsId}>
+              <input
+                id={toolCallsId}
+                className={styles.toggleInput}
+                type="checkbox"
+                checked={showToolCalls}
+                onChange={(event) => onShowToolCallsChange(event.target.checked)}
+              />
+              <span className={styles.toggleLabel}>Show tool calls</span>
+            </label>
+            <p className={styles.hint}>
+              When on, tool calls the agent makes appear inline in the conversation.
             </p>
           </div>
         </section>

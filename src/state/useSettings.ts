@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { SERVER_URL_KEY } from '../api/config.ts';
 import { themeColorHex } from '../brand.ts';
+import {
+  bootstrapNativeSettingsMirror,
+  mirrorSettingToNative,
+} from '../native/settingsMirror.ts';
 import {
   isMicLanguagePreference,
   type MicLanguagePreference,
@@ -13,7 +18,9 @@ const USER_ID_KEY = 'ts-llm.user_id';
 const THEME_KEY = 'ts-llm.theme';
 const MIC_LANGUAGE_KEY = 'ts-llm.mic_language';
 const SHOW_THINKING_KEY = 'ts-llm.show_thinking';
+const SHOW_TOOL_CALLS_KEY = 'ts-llm.show_tool_calls';
 const DEFAULT_USER_ID = 'web-user';
+const DEFAULT_SHOW_TOOL_CALLS = true;
 
 function readStored(key: string): string | null {
   try {
@@ -64,6 +71,9 @@ function applyResolvedTheme(theme: ResolvedTheme): void {
 export interface Settings {
   userId: string;
   setUserId: (next: string) => void;
+  /** Absolute agent-server URL. Empty = same origin (browser); set on native. */
+  serverUrl: string;
+  setServerUrl: (next: string) => void;
   theme: ThemePreference;
   setTheme: (next: ThemePreference) => void;
   /** The actual theme in effect after resolving `system`. */
@@ -72,16 +82,22 @@ export interface Settings {
   setMicLanguage: (next: MicLanguagePreference) => void;
   showThinking: boolean;
   setShowThinking: (next: boolean) => void;
+  showToolCalls: boolean;
+  setShowToolCalls: (next: boolean) => void;
 }
 
 /**
- * Holds persisted app preferences: user id, theme, thinking visibility, and
- * voice input language. Conversations are never stored. Applies the resolved
+ * Holds persisted app preferences: user id, theme, thinking visibility, tool
+ * call visibility, and voice input language. Conversations are never stored. Applies the resolved
  * theme to the document root so CSS tokens can switch via `[data-theme]`.
  */
 export function useSettings(): Settings {
   const [userId, setUserIdState] = useState<string>(
     () => readStored(USER_ID_KEY) ?? DEFAULT_USER_ID,
+  );
+
+  const [serverUrl, setServerUrlState] = useState<string>(
+    () => readStored(SERVER_URL_KEY) ?? '',
   );
 
   const [theme, setThemeState] = useState<ThemePreference>(() => {
@@ -96,6 +112,10 @@ export function useSettings(): Settings {
 
   const [showThinking, setShowThinkingState] = useState<boolean>(() =>
     readStoredBoolean(SHOW_THINKING_KEY, false),
+  );
+
+  const [showToolCalls, setShowToolCallsState] = useState<boolean>(() =>
+    readStoredBoolean(SHOW_TOOL_CALLS_KEY, DEFAULT_SHOW_TOOL_CALLS),
   );
 
   const [systemDark, setSystemDark] = useState<boolean>(prefersDark);
@@ -119,11 +139,25 @@ export function useSettings(): Settings {
     applyResolvedTheme(resolvedTheme);
   }, [resolvedTheme]);
 
+  useEffect(() => {
+    bootstrapNativeSettingsMirror();
+  }, []);
+
   const setUserId = useCallback((next: string) => {
     const trimmed = next.trim();
     if (trimmed.length === 0) return;
     setUserIdState(trimmed);
     writeStored(USER_ID_KEY, trimmed);
+    mirrorSettingToNative(USER_ID_KEY, trimmed);
+  }, []);
+
+  const setServerUrl = useCallback((next: string) => {
+    // Persist the raw (trimmed) value; getApiBaseUrl() owns URL normalization.
+    // Empty is allowed and resets to same-origin (relative) requests.
+    const trimmed = next.trim();
+    setServerUrlState(trimmed);
+    writeStored(SERVER_URL_KEY, trimmed);
+    mirrorSettingToNative(SERVER_URL_KEY, trimmed);
   }, []);
 
   const setTheme = useCallback((next: ThemePreference) => {
@@ -134,6 +168,7 @@ export function useSettings(): Settings {
   const setMicLanguage = useCallback((next: MicLanguagePreference) => {
     setMicLanguageState(next);
     writeStored(MIC_LANGUAGE_KEY, next);
+    mirrorSettingToNative(MIC_LANGUAGE_KEY, next);
   }, []);
 
   const setShowThinking = useCallback((next: boolean) => {
@@ -141,9 +176,16 @@ export function useSettings(): Settings {
     writeStored(SHOW_THINKING_KEY, next ? 'true' : 'false');
   }, []);
 
+  const setShowToolCalls = useCallback((next: boolean) => {
+    setShowToolCallsState(next);
+    writeStored(SHOW_TOOL_CALLS_KEY, next ? 'true' : 'false');
+  }, []);
+
   return {
     userId,
     setUserId,
+    serverUrl,
+    setServerUrl,
     theme,
     setTheme,
     resolvedTheme,
@@ -151,5 +193,7 @@ export function useSettings(): Settings {
     setMicLanguage,
     showThinking,
     setShowThinking,
+    showToolCalls,
+    setShowToolCalls,
   };
 }

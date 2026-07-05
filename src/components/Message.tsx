@@ -11,9 +11,10 @@ import styles from './Message.module.css';
 interface MessageProps {
   message: ChatMessage;
   showThinking: boolean;
+  showToolCalls: boolean;
 }
 
-export const Message = memo(function Message({ message, showThinking }: MessageProps) {
+export const Message = memo(function Message({ message, showThinking, showToolCalls }: MessageProps) {
   if (message.role === 'user') {
     return (
       <div className={`${styles.row} ${styles.user}`}>
@@ -29,7 +30,7 @@ export const Message = memo(function Message({ message, showThinking }: MessageP
           <span className={styles.speakerMark} />
           Agent
         </span>
-        <AssistantBody message={message} showThinking={showThinking} />
+        <AssistantBody message={message} showThinking={showThinking} showToolCalls={showToolCalls} />
       </div>
     </div>
   );
@@ -38,9 +39,11 @@ export const Message = memo(function Message({ message, showThinking }: MessageP
 function AssistantBody({
   message,
   showThinking,
+  showToolCalls,
 }: {
   message: AssistantMessage;
   showThinking: boolean;
+  showToolCalls: boolean;
 }) {
   const streaming = message.status === 'streaming';
   const hasContent = message.content.length > 0;
@@ -52,9 +55,9 @@ function AssistantBody({
         <ThinkingPanel text={message.thinking} streaming={streaming} />
       ) : null}
 
-      {message.tools.map((tool) => (
-        <ToolChip key={tool.toolCallId} tool={tool} />
-      ))}
+      {showToolCalls
+        ? message.tools.map((tool) => <ToolChip key={tool.toolCallId} tool={tool} />)
+        : null}
 
       {hasContent ? (
         <div>

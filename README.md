@@ -23,6 +23,8 @@ Built with React + TypeScript + Vite. UI designed via the impeccable workflow
 - Responsive and touch-friendly; safe-area aware on phones.
 - Installable as a PWA (Add to Home Screen). Offline shell only — chat still
   needs a live `/v1` connection to the agent server.
+- Packages as a native **Android app** via Capacitor — see
+  [Android app (Capacitor)](#android-app-capacitor).
 
 ## Prerequisites
 
@@ -32,13 +34,20 @@ Built with React + TypeScript + Vite. UI designed via the impeccable workflow
 
 ## How it talks to the server
 
-The ts-llm server has no CORS, so the browser must reach it on the **same
-origin**. This app never calls the agent cross-origin; instead:
+The ts-llm server has no CORS, so the **web** build reaches it on the **same
+origin** — it never calls the agent cross-origin. Instead:
 
 - In development, Vite proxies `/v1` to the agent server.
 - In production, `proxy.mjs` serves the built app and reverse-proxies `/v1`.
 
-The ts-llm server itself is never modified.
+For the web build the ts-llm server is never modified. The **Android app** is
+different: it has no proxy and calls the server directly, so the server must
+send CORS headers — see [Android app (Capacitor)](#android-app-capacitor) and
+the handoff doc [`docs/android-cors-handoff.md`](docs/android-cors-handoff.md).
+
+The API base URL is resolved in [`src/api/config.ts`](src/api/config.ts):
+empty = same origin (web); on Android the user sets an absolute server URL in
+**Settings → Agent server**, persisted in `localStorage`.
 
 ## Development
 
@@ -89,7 +98,9 @@ Ember can be installed on phones and desktops (Add to Home Screen / Install).
   metadata and PWA manifest fields. `vite-plugin-pwa` emits the manifest at
   dev/build time; edit `pwaManifest` there, not in `vite.config.ts`.
 - **Service worker** — `vite-plugin-pwa` registers with `autoUpdate` so new
-  builds replace the cached app shell on the next visit.
+  builds replace the cached app shell on the next visit. Disabled in the native
+  (Capacitor) build via `VITE_NATIVE_BUILD=true`, since a service worker caching
+  the local WebView origin is pointless and can serve stale assets.
 - **API traffic** — the service worker does not cache `/v1`; chat requests still
   go to the agent server (proxied in dev and production).
 - **Theme** — install splash uses the dark brand shell (`#191512`, matching the
@@ -98,6 +109,54 @@ Ember can be installed on phones and desktops (Add to Home Screen / Install).
   manifest, icons, and generated `sw.js`.
 - **Icons** — PNGs in `public/` can be recompressed after replacement with
   `npm run compress:icons`.
+
+## Android app (Capacitor)
+
+The same web build runs as a native Android app via [Capacitor](https://capacitorjs.com).
+The WebView loads the bundled `dist/`; there is no proxy, so the app talks to
+the agent server directly over the LAN.
+
+### One-time setup
+
+Requires **Android Studio + JDK 17 + the Android SDK** (Capacitor's toolchain).
+The `android/` project is committed, so on a fresh clone just:
+
+```bash
+npm install
+npm run cap:sync     # builds the native web bundle and copies it into android/
+npm run cap:open     # opens the project in Android Studio to Build/Run
+```
+
+Scripts (in `package.json`):
+
+| Script | Purpose |
+| --- | --- |
+| `build:native` | `vite build` with `VITE_NATIVE_BUILD=true` (no service worker) |
+| `cap:sync` | `build:native` then `cap sync android` |
+| `cap:open` | open the Android project in Android Studio |
+| `cap:run` | sync then `cap run android` on a connected device/emulator |
+
+### Connecting to the agent server
+
+1. Run the device/emulator on the **same LAN** as the ts-llm server.
+2. In the app: **Settings → Agent server → Server URL** → `http://<server-lan-ip>:3000`.
+   (Blank means "same origin" and only works for the web build.)
+3. The server **must send CORS headers** for the WebView origin `http://localhost`.
+   Hand [`docs/android-cors-handoff.md`](docs/android-cors-handoff.md) to the
+   pi-llm team. Without it, every `/v1` call fails.
+
+Config lives in [`capacitor.config.ts`](capacitor.config.ts): the WebView uses
+the `http` scheme with cleartext enabled (plain-HTTP LAN target), and
+`CapacitorHttp` is left **disabled** — that's required, because it can't stream
+responses and would break SSE chat. Debug with `chrome://inspect`.
+
+### Known gaps (native)
+
+- **Voice input** — the Web Speech API isn't available in Android WebView, so the
+  mic shows as unsupported. Restoring it needs a native speech plugin (later phase).
+- **OAuth integrations** — "Connect" opens the system browser, but the return
+  into the app isn't wired yet (needs deep links; later phase). Chat, tasks, and
+  integration toggles work.
 
 ## Production
 
@@ -159,16 +218,19 @@ wired in without reworking the transport or message model.
 
 ```
 src/
-  api/        SSE types + streaming client
-  state/      useChat (in-memory transcript), useSettings (userId + theme)
+  api/        SSE types + streaming client; config.ts resolves the base URL
+  state/      useChat (in-memory transcript), useSettings (userId, theme, server URL)
   voice/      Web Speech API dictation hook
   components/ Header, Transcript, Message, ThinkingPanel, ToolChip,
-              Composer, UserIdDialog, icons
+              Composer, UserIdDialog, SettingsDialog, icons
   styles/     design tokens + global styles
   brand.ts    product name, description, PWA manifest source
 PRODUCT.md    strategy / register (impeccable)
 DESIGN.md     visual system: palette, type, motion (impeccable)
+docs/         backend handoff docs (OAuth, Android CORS)
 public/       favicon, PWA icons
+capacitor.config.ts  native Android app config (Capacitor)
+android/      generated Capacitor Android project (committed)
 proxy.mjs     production static + /v1 reverse proxy
 mock-server.mjs  dev-only mock of POST /v1/respond
 ```

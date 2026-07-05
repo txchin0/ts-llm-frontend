@@ -17,7 +17,7 @@ import { useSpeechInput } from './voice/useSpeechInput.ts';
 import styles from './App.module.css';
 
 export function App() {
-  const { userId, setUserId, theme, setTheme, micLanguage, setMicLanguage, showThinking, setShowThinking } =
+  const { userId, setUserId, serverUrl, setServerUrl, theme, setTheme, micLanguage, setMicLanguage, showThinking, setShowThinking, showToolCalls, setShowToolCalls } =
     useSettings();
   const { messages, isStreaming, hasSession, send, stop, reset } = useChat({ userId });
 
@@ -134,7 +134,12 @@ export function App() {
       />
 
       <main className={styles.main}>
-        <Transcript messages={messages} showThinking={showThinking} userId={userId} />
+        <Transcript
+          messages={messages}
+          showThinking={showThinking}
+          showToolCalls={showToolCalls}
+          userId={userId}
+        />
         {tasks.tasks.length > 0 ? (
           <TasksPanel
             expanded={tasksExpanded}
@@ -181,10 +186,14 @@ export function App() {
         open={settingsOpen}
         userId={userId}
         hasActiveSession={hasActiveSession}
+        serverUrl={serverUrl}
+        onServerUrlChange={setServerUrl}
         theme={theme}
         onThemeChange={setTheme}
         showThinking={showThinking}
         onShowThinkingChange={setShowThinking}
+        showToolCalls={showToolCalls}
+        onShowToolCallsChange={setShowToolCalls}
         micLanguage={micLanguage}
         onMicLanguageChange={handleMicLanguageChange}
         onClose={() => setSettingsOpen(false)}

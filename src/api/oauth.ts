@@ -1,7 +1,6 @@
+import { getApiBaseUrl } from './config.ts';
 import { ApiHttpError } from './errors.ts';
 import { fetchJson } from './http.ts';
-
-const DEFAULT_BASE_URL = '';
 
 export interface OAuthStatusResponse {
   connected: boolean;
@@ -36,7 +35,7 @@ function oauthPath(providerId: string, baseUrl: string): string {
 export function buildOAuthStartUrl(
   providerId: string,
   userId: string,
-  baseUrl: string = DEFAULT_BASE_URL,
+  baseUrl: string = getApiBaseUrl(),
 ): string {
   const params = new URLSearchParams({ user_id: userId });
   return `${oauthPath(providerId, baseUrl)}/start?${params}`;
@@ -48,7 +47,7 @@ export async function getOAuthStatus(
   userId: string,
   options: OAuthRequestOptions = {},
 ): Promise<OAuthStatusResponse> {
-  const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
+  const baseUrl = options.baseUrl ?? getApiBaseUrl();
   const params = new URLSearchParams({ user_id: userId });
 
   return fetchJson<OAuthStatusResponse>(`${oauthPath(providerId, baseUrl)}/status?${params}`, {
@@ -64,7 +63,7 @@ export async function disconnectOAuth(
   userId: string,
   options: OAuthRequestOptions = {},
 ): Promise<void> {
-  const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
+  const baseUrl = options.baseUrl ?? getApiBaseUrl();
   const params = new URLSearchParams({ user_id: userId });
 
   const response = await fetch(`${oauthPath(providerId, baseUrl)}?${params}`, {

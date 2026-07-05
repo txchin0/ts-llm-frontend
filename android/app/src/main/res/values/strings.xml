@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ember</string>
+    <string name="title_activity_main">Ember</string>
+    <string name="package_name">app.ember.mobile</string>
+    <string name="custom_url_scheme">app.ember.mobile</string>
+    <string name="assist_status_listening">Listening…</string>
+    <string name="assist_status_thinking">Thinking…</string>
+    <string name="assist_status_tool">Using %1$s…</string>
+    <string name="assist_compose_hint">Type instead</string>
+    <string name="assist_voice_hint">Back to voice</string>
+    <string name="assist_send_hint">Send</string>
+    <string name="assist_compose_placeholder">Message the agent…</string>
+    <string name="assist_error_no_server">Set the server URL in Ember first</string>
+    <string name="assist_error_no_mic">Open Ember once to grant microphone access</string>
+</resources>

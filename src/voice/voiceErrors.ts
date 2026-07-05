@@ -25,6 +25,16 @@ export function voiceErrorMessage(code: string): string | null {
       return 'Voice input is not available in this browser tab';
     case 'language-not-supported':
       return 'Speech language not supported';
+    case 'recognizer-unavailable':
+      return 'Speech recognition is not available on this device';
+    case 'unsupported':
+      return 'Voice input needs Speech Recognition (Chrome, Safari, or Edge)';
+    case 'insecure-context':
+      return 'Voice input needs HTTPS or localhost';
+    case 'already-started':
+      return 'Voice input already running';
+    case 'start-failed':
+      return 'Could not start voice input';
     case 'no-speech':
     case 'aborted':
       return null;

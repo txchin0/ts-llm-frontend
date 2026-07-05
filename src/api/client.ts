@@ -1,3 +1,4 @@
+import { getApiBaseUrl } from './config.ts';
 import { ApiHttpError } from './errors.ts';
 import { parseSseFrames } from './sse.ts';
 import {
@@ -8,7 +9,6 @@ import {
 
 export { ApiHttpError, RespondHttpError } from './errors.ts';
 
-const DEFAULT_BASE_URL = '';
 const RESPOND_PATH = '/v1/respond';
 
 export interface RespondUnknownEvent {
@@ -32,7 +32,7 @@ export async function* respondStream(
   request: RespondRequest,
   options: RespondStreamOptions = {},
 ): AsyncGenerator<RespondStreamEvent> {
-  const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
+  const baseUrl = options.baseUrl ?? getApiBaseUrl();
 
   const response = await fetch(`${baseUrl}${RESPOND_PATH}`, {
     method: 'POST',
