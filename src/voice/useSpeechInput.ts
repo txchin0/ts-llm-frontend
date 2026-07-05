@@ -1,24 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { Capacitor } from '@capacitor/core';
+
+import { NativeSpeechEngine } from './nativeSpeechEngine.ts';
+import type { SpeechInputEngine } from './speechEngine.ts';
 import { voiceErrorMessage } from './voiceErrors.ts';
+import { WebSpeechEngine } from './webSpeechEngine.ts';
 
-function getRecognitionConstructor(): SpeechRecognitionConstructor | undefined {
-  if (typeof window === 'undefined') return undefined;
-  return window.SpeechRecognition ?? window.webkitSpeechRecognition;
-}
-
-function releaseRecognition(recognition: SpeechRecognition | null, opts?: { abort?: boolean }) {
-  if (!recognition) return;
-  recognition.onstart = null;
-  recognition.onresult = null;
-  recognition.onerror = null;
-  recognition.onend = null;
-  try {
-    if (opts?.abort) recognition.abort();
-    else recognition.stop();
-  } catch {
-    /* already ended */
-  }
+function createSpeechEngine(): SpeechInputEngine {
+  return Capacitor.isNativePlatform() ? new NativeSpeechEngine() : new WebSpeechEngine();
 }
 
 export interface UseSpeechInputOptions {
@@ -40,23 +30,20 @@ export interface SpeechInput {
 }
 
 /**
- * Web Speech API dictation. Recognized speech is appended to whatever text was
- * already in the composer and pushed back via `onTranscript`; it never auto-
- * sends. Degrades to `supported: false` where the API is unavailable.
- *
- * Uses continuous listening; restarts automatically when the browser ends a
- * session early (common on Android Chrome).
+ * Speech dictation behind a mic-input strategy: Web Speech API in browsers,
+ * android.speech.SpeechRecognizer (via Capacitor plugin) in the native app.
+ * Recognized speech is appended to whatever text was already in the composer
+ * and pushed back via `onTranscript`; it never auto-sends. Degrades to
+ * `supported: false` where no engine is available.
  */
 export function useSpeechInput({ onTranscript, language }: UseSpeechInputOptions): SpeechInput {
-  const [supported] = useState(() => getRecognitionConstructor() !== undefined);
+  const [engine] = useState<SpeechInputEngine>(createSpeechEngine);
+
+  const [supported, setSupported] = useState<boolean>(() => engine.isAvailableSync?.() ?? true);
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const wantsListeningRef = useRef(false);
   const baseTextRef = useRef('');
-  const finalTextRef = useRef('');
-  const launchRecognitionRef = useRef<() => void>(() => {});
   const onTranscriptRef = useRef(onTranscript);
   const languageRef = useRef(language);
   useEffect(() => {
@@ -66,134 +53,59 @@ export function useSpeechInput({ onTranscript, language }: UseSpeechInputOptions
     languageRef.current = language;
   });
 
+  useEffect(() => {
+    let cancelled = false;
+    void engine.isAvailable().then((available) => {
+      if (!cancelled) setSupported(available);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [engine]);
+
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
-  const clearEngine = useCallback((opts?: { abort?: boolean }) => {
-    const rec = recognitionRef.current;
-    recognitionRef.current = null;
-    releaseRecognition(rec, opts);
-  }, []);
-
   const stop = useCallback(
     (opts?: { abort?: boolean }) => {
-      wantsListeningRef.current = false;
-      clearEngine(opts);
+      engine.stop(opts);
       setIsListening(false);
     },
-    [clearEngine],
+    [engine],
   );
-
-  const launchRecognition = useCallback(() => {
-    const Constructor = getRecognitionConstructor();
-    if (!Constructor || !wantsListeningRef.current) return;
-
-    const recognition = new Constructor();
-    recognition.lang = languageRef.current;
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
-
-    recognition.onstart = () => {
-      setIsListening(true);
-    };
-
-    recognition.onresult = (event) => {
-      let interim = '';
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        const result = event.results[i];
-        const transcript = result[0]?.transcript ?? '';
-        if (result.isFinal) {
-          finalTextRef.current += transcript;
-        } else {
-          interim += transcript;
-        }
-      }
-      onTranscriptRef.current(baseTextRef.current + finalTextRef.current + interim);
-    };
-
-    recognition.onerror = (event) => {
-      if (event.error === 'no-speech' || event.error === 'aborted') {
-        return;
-      }
-      wantsListeningRef.current = false;
-      if (recognitionRef.current === recognition) {
-        recognitionRef.current = null;
-      }
-      releaseRecognition(recognition, { abort: true });
-      setIsListening(false);
-      const message = voiceErrorMessage(event.error);
-      if (message) setError(message);
-    };
-
-    recognition.onend = () => {
-      if (recognitionRef.current !== recognition) return;
-      recognitionRef.current = null;
-
-      if (!wantsListeningRef.current) {
-        setIsListening(false);
-        return;
-      }
-
-      // Android Chrome often ends sessions despite continuous=true; restart.
-      window.setTimeout(() => {
-        if (!wantsListeningRef.current) {
-          setIsListening(false);
-          return;
-        }
-        launchRecognitionRef.current();
-      }, 50);
-    };
-
-    recognitionRef.current = recognition;
-    try {
-      recognition.start();
-    } catch (err) {
-      recognitionRef.current = null;
-      wantsListeningRef.current = false;
-      setIsListening(false);
-      const message =
-        err instanceof Error && err.message.includes('already started')
-          ? 'Voice input already running'
-          : 'Could not start voice input';
-      setError(message);
-    }
-  }, []);
-
-  useEffect(() => {
-    launchRecognitionRef.current = launchRecognition;
-  }, [launchRecognition]);
 
   const start = useCallback(
     (baseText: string) => {
-      const Constructor = getRecognitionConstructor();
-      if (!Constructor) {
-        setError('Voice input needs Speech Recognition (Chrome, Safari, or Edge)');
-        return;
-      }
-      if (typeof window !== 'undefined' && !window.isSecureContext) {
-        setError('Voice input needs HTTPS or localhost');
-        return;
-      }
-
-      clearEngine({ abort: true });
       setError(null);
 
       const base = baseText.length > 0 && !baseText.endsWith(' ') ? `${baseText} ` : baseText;
       baseTextRef.current = base;
-      finalTextRef.current = '';
-      wantsListeningRef.current = true;
-      launchRecognition();
+
+      engine.start(languageRef.current, {
+        onTranscript: (sessionText) => {
+          onTranscriptRef.current(baseTextRef.current + sessionText);
+        },
+        onStart: () => {
+          setIsListening(true);
+        },
+        onEnd: () => {
+          setIsListening(false);
+        },
+        onError: (code) => {
+          const message = voiceErrorMessage(code);
+          if (message) setError(message);
+        },
+      });
     },
-    [clearEngine, launchRecognition],
+    [engine],
   );
 
   useEffect(() => {
     return () => {
-      stop({ abort: true });
+      engine.stop({ abort: true });
     };
-  }, [stop]);
+  }, [engine]);
 
   return { supported, isListening, error, start, stop, clearError };
 }
