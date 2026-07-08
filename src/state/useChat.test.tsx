@@ -46,7 +46,7 @@ describe('useChat', () => {
       ),
     );
 
-    const { result } = renderHook(() => useChat({ userId: 'user-1' }));
+    const { result } = renderHook(() => useChat());
 
     act(() => {
       result.current.send('Hi');
@@ -85,7 +85,7 @@ describe('useChat', () => {
       })(),
     );
 
-    const { result } = renderHook(() => useChat({ userId: 'user-1' }));
+    const { result } = renderHook(() => useChat());
 
     act(() => {
       result.current.send('Hi');
@@ -112,7 +112,7 @@ describe('useChat', () => {
       throw new ApiHttpError(503, 'Service Unavailable');
     });
 
-    const { result } = renderHook(() => useChat({ userId: 'user-1' }));
+    const { result } = renderHook(() => useChat());
 
     act(() => {
       result.current.send('Hi');
@@ -132,7 +132,7 @@ describe('useChat', () => {
   it('completes when the stream ends without a final event', async () => {
     respondStreamMock.mockReturnValue(streamOf({ type: 'delta', text: 'Done' }));
 
-    const { result } = renderHook(() => useChat({ userId: 'user-1' }));
+    const { result } = renderHook(() => useChat());
 
     act(() => {
       result.current.send('Hi');
@@ -155,7 +155,7 @@ describe('useChat', () => {
       }),
     );
 
-    const { result } = renderHook(() => useChat({ userId: 'user-1' }));
+    const { result } = renderHook(() => useChat());
 
     act(() => {
       result.current.send('Hi');

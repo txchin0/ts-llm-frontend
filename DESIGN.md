@@ -115,7 +115,8 @@ Body measure capped at ~70ch. Headings use `text-wrap: balance`; prose uses
 - App shell: sticky slim header, scrollable transcript (max ~70ch column,
   centered), sticky composer pinned to the bottom with safe-area padding.
 - Header: serif wordmark + small session/status pill; icon controls for theme,
-  thinking visibility, new chat, and the user-id button.
+  thinking visibility, new chat, and the signed-in account chip (opens
+  settings).
 - Message (user): right-aligned, ember-tinted surface bubble, sans.
 - Message (assistant): left-aligned, open (no bubble), markdown prose; a
   collapsible mono "Thinking" panel above the answer; compact tool chips with
@@ -123,7 +124,10 @@ Body measure capped at ~70ch. Headings use `text-wrap: balance`; prose uses
   block on failure.
 - Composer: auto-grow textarea, mic toggle (Web Speech), send/stop button that
   swaps by streaming state. Full-width, large touch targets.
-- Dialogs: native `<dialog>` for the user-id editor (escapes overflow/stacking).
+- Dialogs: native `<dialog>` for settings (account/sign-out, server, display,
+  voice, integrations).
+- Auth screen: full-page card gating the app when no session exists; sign-in /
+  create-account tabs, plus the server URL field on native builds.
 
 ## States (definition of done)
 

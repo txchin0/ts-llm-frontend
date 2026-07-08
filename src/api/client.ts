@@ -1,3 +1,4 @@
+import { authFetch } from './auth.ts';
 import { getApiBaseUrl } from './config.ts';
 import { ApiHttpError } from './errors.ts';
 import { parseSseFrames } from './sse.ts';
@@ -34,7 +35,7 @@ export async function* respondStream(
 ): AsyncGenerator<RespondStreamEvent> {
   const baseUrl = options.baseUrl ?? getApiBaseUrl();
 
-  const response = await fetch(`${baseUrl}${RESPOND_PATH}`, {
+  const response = await authFetch(`${baseUrl}${RESPOND_PATH}`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',

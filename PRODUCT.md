@@ -10,7 +10,7 @@ A single technical owner running their own ts-llm agent server, using this web a
 
 ## Product Purpose
 
-A focused chat client for the ts-llm `POST /v1/respond` SSE API. It exists to make a personal agent feel immediate and present on any device: stream normal output and reasoning distinctly, surface tool activity, let the user switch which `user_id` they speak as, and offer hands-free voice input. It deliberately keeps no conversation history; each session lives only in memory and in the server for its TTL. Success is the interface disappearing into the exchange: the user reads, talks, and acts without fighting chrome, waiting on choreography, or worrying about stored data.
+A focused chat client for the ts-llm `POST /v1/respond` SSE API. It exists to make a personal agent feel immediate and present on any device: stream normal output and reasoning distinctly, surface tool activity, scope everything to the signed-in account (`user_id` + password, with access/refresh tokens), and offer hands-free voice input. It deliberately keeps no conversation history; each session lives only in memory and in the server for its TTL. Success is the interface disappearing into the exchange: the user reads, talks, and acts without fighting chrome, waiting on choreography, or worrying about stored data.
 
 ## Brand Personality
 

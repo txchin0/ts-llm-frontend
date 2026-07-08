@@ -17,7 +17,6 @@ export interface ProviderUsage {
 }
 
 export interface RespondRequest {
-  user_id: string;
   /** Omitted on the first turn; the server issues one in the `start` event. */
   session_id?: string;
   message: string;

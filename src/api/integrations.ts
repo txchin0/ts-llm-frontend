@@ -24,15 +24,13 @@ export type IntegrationEnablementPatch = {
   enabled: boolean;
 };
 
-/** Lists registered integrations and effective enablement for a user. */
+/** Lists registered integrations and effective enablement for the authenticated user. */
 export async function listIntegrations(
-  userId: string,
   options: IntegrationsRequestOptions = {},
 ): Promise<ListIntegrationsResponse> {
   const baseUrl = options.baseUrl ?? getApiBaseUrl();
-  const params = new URLSearchParams({ user_id: userId });
 
-  return fetchJson<ListIntegrationsResponse>(`${baseUrl}${INTEGRATIONS_PATH}?${params}`, {
+  return fetchJson<ListIntegrationsResponse>(`${baseUrl}${INTEGRATIONS_PATH}`, {
     method: 'GET',
     headers: { accept: 'application/json' },
     signal: options.signal,
@@ -41,7 +39,6 @@ export async function listIntegrations(
 
 /** Applies enable/disable patches for one or more integrations. */
 export async function updateIntegrations(
-  userId: string,
   patches: Record<string, IntegrationEnablementPatch>,
   options: IntegrationsRequestOptions = {},
 ): Promise<ListIntegrationsResponse> {
@@ -53,10 +50,7 @@ export async function updateIntegrations(
       accept: 'application/json',
       'content-type': 'application/json',
     },
-    body: JSON.stringify({
-      user_id: userId,
-      integrations: patches,
-    }),
+    body: JSON.stringify({ integrations: patches }),
     signal: options.signal,
   });
 }

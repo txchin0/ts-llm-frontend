@@ -43,7 +43,7 @@ describe('respondStream', () => {
     );
 
     const events = await collectAsync(
-      respondStream({ user_id: 'u1', message: 'hi' }),
+      respondStream({ message: 'hi' }),
     );
 
     expect(events).toEqual([{ type: 'delta', text: 'hello' }]);
@@ -58,7 +58,7 @@ describe('respondStream', () => {
     );
 
     const events = await collectAsync(
-      respondStream({ user_id: 'u1', message: 'hi' }),
+      respondStream({ message: 'hi' }),
     );
 
     expect(events).toEqual([{ type: 'unknown', eventName: undefined, raw: 'not-json' }]);
@@ -72,7 +72,7 @@ describe('respondStream', () => {
     );
 
     const events = await collectAsync(
-      respondStream({ user_id: 'u1', message: 'hi' }),
+      respondStream({ message: 'hi' }),
     );
 
     expect(events[0]).toMatchObject({ type: 'unknown', raw: { type: 'audio', url: 'x' } });
@@ -84,7 +84,7 @@ describe('respondStream', () => {
       vi.fn(() => Promise.resolve(createSseResponse('', { ok: false, status: 503 }))),
     );
 
-    await expect(collectAsync(respondStream({ user_id: 'u1', message: 'hi' }))).rejects.toBeInstanceOf(
+    await expect(collectAsync(respondStream({ message: 'hi' }))).rejects.toBeInstanceOf(
       ApiHttpError,
     );
   });
@@ -102,7 +102,7 @@ describe('respondStream', () => {
       ),
     );
 
-    await expect(collectAsync(respondStream({ user_id: 'u1', message: 'hi' }))).rejects.toThrow(
+    await expect(collectAsync(respondStream({ message: 'hi' }))).rejects.toThrow(
       'empty response body',
     );
   });
