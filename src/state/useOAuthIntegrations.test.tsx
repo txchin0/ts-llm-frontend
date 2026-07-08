@@ -7,11 +7,13 @@ import { useOAuthIntegrations } from './useOAuthIntegrations.ts';
 const getOAuthStatusMock = vi.hoisted(() => vi.fn());
 const disconnectOAuthMock = vi.hoisted(() => vi.fn());
 const buildOAuthStartUrlMock = vi.hoisted(() => vi.fn());
+const createOAuthConnectTokenMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../api/oauth.ts', () => ({
   getOAuthStatus: getOAuthStatusMock,
   disconnectOAuth: disconnectOAuthMock,
   buildOAuthStartUrl: buildOAuthStartUrlMock,
+  createOAuthConnectToken: createOAuthConnectTokenMock,
   toOAuthUserMessage: (error: unknown) =>
     error instanceof Error ? error.message : 'Could not complete Google sign-in. Try again.',
 }));
@@ -31,8 +33,10 @@ const googleIntegration: IntegrationSummary = {
 describe('useOAuthIntegrations', () => {
   beforeEach(() => {
     buildOAuthStartUrlMock.mockImplementation(
-      (providerId: string, userId: string) => `https://oauth.test/${providerId}?user=${userId}`,
+      (providerId: string, connectToken: string) =>
+        `https://oauth.test/${providerId}?token=${connectToken}`,
     );
+    createOAuthConnectTokenMock.mockResolvedValue('oct_test_token');
     getOAuthStatusMock.mockResolvedValue({
       connected: true,
       granted_scopes: ['calendar'],
@@ -47,12 +51,12 @@ describe('useOAuthIntegrations', () => {
     getOAuthStatusMock.mockReset();
     disconnectOAuthMock.mockReset();
     buildOAuthStartUrlMock.mockReset();
+    createOAuthConnectTokenMock.mockReset();
   });
 
   it('loads provider status when active', async () => {
     const { result } = renderHook(() =>
       useOAuthIntegrations({
-        userId: 'user-1',
         active: true,
         items: [googleIntegration],
       }),
@@ -62,7 +66,7 @@ describe('useOAuthIntegrations', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    expect(getOAuthStatusMock).toHaveBeenCalledWith('google', 'user-1', expect.any(Object));
+    expect(getOAuthStatusMock).toHaveBeenCalledWith('google', expect.any(Object));
     expect(result.current.statusByProvider.google).toEqual({
       connected: true,
       granted_scopes: ['calendar'],
@@ -70,10 +74,9 @@ describe('useOAuthIntegrations', () => {
     });
   });
 
-  it('opens consent when connect is called', () => {
+  it('mints a connect token and opens consent when connect is called', async () => {
     const { result } = renderHook(() =>
       useOAuthIntegrations({
-        userId: 'user-1',
         active: true,
         items: [googleIntegration],
       }),
@@ -83,18 +86,40 @@ describe('useOAuthIntegrations', () => {
       result.current.connect('google');
     });
 
-    expect(buildOAuthStartUrlMock).toHaveBeenCalledWith('google', 'user-1');
-    expect(window.open).toHaveBeenCalledWith(
-      'https://oauth.test/google?user=user-1',
-      '_blank',
-      'noopener,noreferrer',
+    await waitFor(() => {
+      expect(window.open).toHaveBeenCalledWith(
+        'https://oauth.test/google?token=oct_test_token',
+        '_blank',
+        'noopener,noreferrer',
+      );
+    });
+    expect(createOAuthConnectTokenMock).toHaveBeenCalled();
+    expect(buildOAuthStartUrlMock).toHaveBeenCalledWith('google', 'oct_test_token');
+  });
+
+  it('surfaces connect-token failures instead of opening a window', async () => {
+    createOAuthConnectTokenMock.mockRejectedValueOnce(new Error('signed out'));
+
+    const { result } = renderHook(() =>
+      useOAuthIntegrations({
+        active: true,
+        items: [googleIntegration],
+      }),
     );
+
+    act(() => {
+      result.current.connect('google');
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toBe('signed out');
+    });
+    expect(window.open).not.toHaveBeenCalled();
   });
 
   it('refreshes status after disconnect', async () => {
     const { result } = renderHook(() =>
       useOAuthIntegrations({
-        userId: 'user-1',
         active: true,
         items: [googleIntegration],
       }),
@@ -110,7 +135,7 @@ describe('useOAuthIntegrations', () => {
       await result.current.disconnect('google');
     });
 
-    expect(disconnectOAuthMock).toHaveBeenCalledWith('google', 'user-1');
+    expect(disconnectOAuthMock).toHaveBeenCalledWith('google');
     expect(getOAuthStatusMock).toHaveBeenCalled();
   });
 
@@ -123,7 +148,6 @@ describe('useOAuthIntegrations', () => {
 
     const { result } = renderHook(() =>
       useOAuthIntegrations({
-        userId: 'user-1',
         active: true,
         items: [googleIntegration],
       }),
@@ -140,6 +164,8 @@ describe('useOAuthIntegrations', () => {
       );
     });
 
-    expect(window.open).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(window.open).toHaveBeenCalled();
+    });
   });
 });

@@ -5,7 +5,6 @@ import { listTasks, type TaskSummary } from '../api/tasks.ts';
 import { usePollGate } from './usePollGate.ts';
 
 export interface UseTasksOptions {
-  userId: string;
   pollIntervalMs: number;
 }
 
@@ -26,23 +25,15 @@ function toErrorMessage(error: unknown): string {
   return 'Could not load background tasks. Try again.';
 }
 
-export function useTasks({ userId, pollIntervalMs }: UseTasksOptions): UseTasks {
+export function useTasks({ pollIntervalMs }: UseTasksOptions): UseTasks {
   const [tasks, setTasks] = useState<TaskSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const fetchedForUserIdRef = useRef(userId);
   const tasksRef = useRef<TaskSummary[]>([]);
   const canPoll = usePollGate();
 
   const refresh = useCallback(() => {
-    if (fetchedForUserIdRef.current !== userId) {
-      fetchedForUserIdRef.current = userId;
-      tasksRef.current = [];
-      setTasks([]);
-      setError(null);
-    }
-
     const controller = new AbortController();
     abortRef.current?.abort();
     abortRef.current = controller;
@@ -54,7 +45,7 @@ export function useTasks({ userId, pollIntervalMs }: UseTasksOptions): UseTasks 
     void (async () => {
       try {
         setError(null);
-        const response = await listTasks(userId, { signal: controller.signal });
+        const response = await listTasks({ signal: controller.signal });
         if (controller.signal.aborted) {
           return;
         }
@@ -75,7 +66,7 @@ export function useTasks({ userId, pollIntervalMs }: UseTasksOptions): UseTasks 
         }
       }
     })();
-  }, [userId]);
+  }, []);
 
   useEffect(() => {
     if (!canPoll) {
@@ -91,7 +82,7 @@ export function useTasks({ userId, pollIntervalMs }: UseTasksOptions): UseTasks 
       window.clearInterval(intervalId);
       abortRef.current?.abort();
     };
-  }, [canPoll, userId, pollIntervalMs, refresh]);
+  }, [canPoll, pollIntervalMs, refresh]);
 
   return { tasks, isLoading: isLoading && canPoll, error, refresh };
 }

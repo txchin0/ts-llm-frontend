@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Auto-backup rules (android:fullBackupContent, API <= 30). The auth token pair
+  lives in the Capacitor Preferences store (CapacitorStorage SharedPreferences);
+  exclude the whole file so refresh tokens are never copied off-device. The only
+  other data there is non-secret, re-derivable settings (server URL, mic language).
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="CapacitorStorage.xml" />
+</full-backup-content>

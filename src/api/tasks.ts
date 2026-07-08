@@ -26,17 +26,15 @@ export interface ListTasksOptions {
 }
 
 /**
- * Lists background tasks for a user. Omits status/limit query params so the
- * server returns pending and running tasks in FIFO order.
+ * Lists the authenticated user's background tasks. Omits status/limit query
+ * params so the server returns pending and running tasks in FIFO order.
  */
 export async function listTasks(
-  userId: string,
   options: ListTasksOptions = {},
 ): Promise<ListTasksResponse> {
   const baseUrl = options.baseUrl ?? getApiBaseUrl();
-  const params = new URLSearchParams({ user_id: userId });
 
-  return fetchJson<ListTasksResponse>(`${baseUrl}${TASKS_PATH}?${params}`, {
+  return fetchJson<ListTasksResponse>(`${baseUrl}${TASKS_PATH}`, {
     method: 'GET',
     headers: { accept: 'application/json' },
     signal: options.signal,

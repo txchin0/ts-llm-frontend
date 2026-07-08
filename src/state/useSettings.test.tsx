@@ -58,17 +58,6 @@ describe('useSettings', () => {
     document.querySelector('meta[name="theme-color"]')?.remove();
   });
 
-  it('persists user id updates', () => {
-    const { result } = renderHook(() => useSettings());
-
-    act(() => {
-      result.current.setUserId('alice');
-    });
-
-    expect(result.current.userId).toBe('alice');
-    expect(storage.getItem('ts-llm.user_id')).toBe('alice');
-  });
-
   it('defaults serverUrl to empty when no stored value', () => {
     const { result } = renderHook(() => useSettings());
 

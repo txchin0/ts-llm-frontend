@@ -4,14 +4,17 @@ import { Preferences } from '@capacitor/preferences';
 import { SERVER_URL_KEY } from '../api/config.ts';
 
 /**
- * Mirrors the settings the native assistant needs (server URL, user id, mic
- * language) from localStorage into Capacitor Preferences, whose Android
- * backing store (`CapacitorStorage` SharedPreferences) is readable from the
+ * Mirrors the settings the native assistant needs (server URL, mic language)
+ * from localStorage into Capacitor Preferences, whose Android backing store
+ * (`CapacitorStorage` SharedPreferences) is readable from the
  * VoiceInteractionSession — WebView localStorage is not. localStorage remains
  * the source of truth; this mirror is write-only from the web side.
+ *
+ * Auth tokens live in the same Preferences store but flow both ways (the
+ * native layer writes back rotated pairs) — see src/api/authTokens.ts.
  */
 
-export const MIRRORED_SETTING_KEYS = [SERVER_URL_KEY, 'ts-llm.user_id', 'ts-llm.mic_language'];
+export const MIRRORED_SETTING_KEYS = [SERVER_URL_KEY, 'ts-llm.mic_language'];
 
 export function mirrorSettingToNative(key: string, value: string): void {
   if (!Capacitor.isNativePlatform()) return;

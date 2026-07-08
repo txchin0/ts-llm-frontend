@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { IntegrationEnablementPatch, IntegrationSummary } from '../api/integrations.ts';
 import {
   buildOAuthStartUrl,
+  createOAuthConnectToken,
   disconnectOAuth,
   getOAuthStatus,
   toOAuthUserMessage,
@@ -11,7 +12,6 @@ import {
 import { usePollGate } from './usePollGate.ts';
 
 export interface UseOAuthIntegrationsOptions {
-  userId: string;
   active: boolean;
   items: IntegrationSummary[];
 }
@@ -68,7 +68,6 @@ function consentComplete(status: OAuthStatusResponse): boolean {
 }
 
 export function useOAuthIntegrations({
-  userId,
   active,
   items,
 }: UseOAuthIntegrationsOptions): UseOAuthIntegrations {
@@ -124,7 +123,7 @@ export function useOAuthIntegrations({
 
       const results = await Promise.allSettled(
         providers.map(async (providerId) => {
-          const status = await getOAuthStatus(providerId, userId, { signal });
+          const status = await getOAuthStatus(providerId, { signal });
           return [providerId, status] as [string, OAuthStatusResponse];
         }),
       );
@@ -157,16 +156,27 @@ export function useOAuthIntegrations({
 
       return entries;
     },
-    [applyStatusEntries, userId],
+    [applyStatusEntries],
   );
 
-  const openConsent = useCallback(
-    (providerId: string) => {
-      awaitingConsentRef.current.add(providerId);
-      window.open(buildOAuthStartUrl(providerId, userId), '_blank', 'noopener,noreferrer');
-    },
-    [userId],
-  );
+  const openConsent = useCallback((providerId: string) => {
+    awaitingConsentRef.current.add(providerId);
+    // `/start` is a top-level navigation that cannot carry the bearer header,
+    // so mint a single-use connect token first and put it in the URL instead.
+    void (async () => {
+      try {
+        const connectToken = await createOAuthConnectToken();
+        window.open(
+          buildOAuthStartUrl(providerId, connectToken),
+          '_blank',
+          'noopener,noreferrer',
+        );
+      } catch (connectError) {
+        awaitingConsentRef.current.delete(providerId);
+        setError(toOAuthUserMessage(connectError));
+      }
+    })();
+  }, []);
 
   const connect = useCallback(
     (providerId: string) => {
@@ -180,7 +190,7 @@ export function useOAuthIntegrations({
     async (providerId: string) => {
       clearError();
       try {
-        await disconnectOAuth(providerId, userId);
+        await disconnectOAuth(providerId);
         awaitingConsentRef.current.delete(providerId);
         const controller = new AbortController();
         await fetchStatusForProviders([providerId], controller.signal);
@@ -188,7 +198,7 @@ export function useOAuthIntegrations({
         setError(toOAuthUserMessage(disconnectError));
       }
     },
-    [clearError, fetchStatusForProviders, userId],
+    [clearError, fetchStatusForProviders],
   );
 
   const afterSave = useCallback(

@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { Capacitor } from '@capacitor/core';
+
+import { AuthScreen } from './components/AuthScreen.tsx';
 import { Composer } from './components/Composer.tsx';
 import { HandsFreeMode } from './components/HandsFreeMode.tsx';
 import { Header } from './components/Header.tsx';
 import { SettingsDialog } from './components/SettingsDialog.tsx';
 import { TasksPanel } from './components/TasksPanel.tsx';
 import { Transcript } from './components/Transcript.tsx';
-import { UserIdDialog } from './components/UserIdDialog.tsx';
+import { useAuth, type Auth } from './state/useAuth.ts';
 import { selectLatestAssistant, useChat } from './state/useChat.ts';
 import { useHandsFree } from './state/useHandsFree.ts';
-import { useSettings } from './state/useSettings.ts';
+import { useSettings, type Settings } from './state/useSettings.ts';
 import { useTasks } from './state/useTasks.ts';
 import { resolveMicLanguage } from './voice/speechLanguages.ts';
 import type { MicLanguagePreference } from './voice/speechLanguages.ts';
@@ -17,12 +20,47 @@ import { useSpeechInput } from './voice/useSpeechInput.ts';
 import styles from './App.module.css';
 
 export function App() {
-  const { userId, setUserId, serverUrl, setServerUrl, theme, setTheme, micLanguage, setMicLanguage, showThinking, setShowThinking, showToolCalls, setShowToolCalls } =
-    useSettings();
-  const { messages, isStreaming, hasSession, send, stop, reset } = useChat({ userId });
+  const auth = useAuth();
+  const settings = useSettings();
+
+  if (auth.status === 'initializing') {
+    // Waiting on the native token bootstrap; avoid flashing the login screen.
+    return null;
+  }
+
+  if (auth.status === 'signedOut') {
+    return (
+      <AuthScreen
+        initialUserId={auth.userId}
+        onLogin={auth.login}
+        onRegister={auth.register}
+        // On native there is no same-origin default; the server must be
+        // reachable before login, so expose the URL field here too.
+        {...(Capacitor.isNativePlatform()
+          ? {
+              serverUrl: settings.serverUrl,
+              onServerUrlChange: settings.setServerUrl,
+            }
+          : {})}
+      />
+    );
+  }
+
+  // Key by account so switching users remounts with a fresh conversation.
+  return <ChatApp key={auth.userId} auth={auth} settings={settings} />;
+}
+
+interface ChatAppProps {
+  auth: Auth;
+  settings: Settings;
+}
+
+function ChatApp({ auth, settings }: ChatAppProps) {
+  const { serverUrl, setServerUrl, theme, setTheme, micLanguage, setMicLanguage, showThinking, setShowThinking, showToolCalls, setShowToolCalls } =
+    settings;
+  const { messages, isStreaming, hasSession, send, stop, reset } = useChat();
 
   const [input, setInput] = useState('');
-  const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tasksExpanded, setTasksExpanded] = useState(false);
 
@@ -60,7 +98,6 @@ export function App() {
   const latestAssistant = useMemo(() => selectLatestAssistant(messages), [messages]);
 
   const tasks = useTasks({
-    userId,
     pollIntervalMs: tasksExpanded ? 5_000 : 20_000,
   });
 
@@ -80,16 +117,10 @@ export function App() {
     setInput('');
   }, [reset]);
 
-  const handleSaveUserId = useCallback(
-    (nextUserId: string) => {
-      setUserDialogOpen(false);
-      if (nextUserId !== userId) {
-        setUserId(nextUserId);
-        reset();
-      }
-    },
-    [reset, setUserId, userId],
-  );
+  const handleLogout = useCallback(() => {
+    setSettingsOpen(false);
+    void auth.logout();
+  }, [auth]);
 
   const toggleVoice = useCallback(() => {
     if (voice.isListening) {
@@ -124,12 +155,11 @@ export function App() {
   return (
     <div className={styles.app}>
       <Header
-        userId={userId}
+        userId={auth.userId}
         theme={theme}
         onSetTheme={setTheme}
         hasSession={hasActiveSession}
         onNewChat={handleNewChat}
-        onOpenUserDialog={() => setUserDialogOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
@@ -138,7 +168,7 @@ export function App() {
           messages={messages}
           showThinking={showThinking}
           showToolCalls={showToolCalls}
-          userId={userId}
+          userId={auth.userId}
         />
         {tasks.tasks.length > 0 ? (
           <TasksPanel
@@ -174,17 +204,10 @@ export function App() {
         voiceSupported={voice.supported}
       />
 
-      <UserIdDialog
-        open={userDialogOpen}
-        currentUserId={userId}
-        hasActiveSession={hasActiveSession}
-        onClose={() => setUserDialogOpen(false)}
-        onSave={handleSaveUserId}
-      />
-
       <SettingsDialog
         open={settingsOpen}
-        userId={userId}
+        userId={auth.userId}
+        onLogout={handleLogout}
         hasActiveSession={hasActiveSession}
         serverUrl={serverUrl}
         onServerUrlChange={setServerUrl}

@@ -1,3 +1,4 @@
+import { authFetch } from './auth.ts';
 import { getApiBaseUrl } from './config.ts';
 import { ApiHttpError } from './errors.ts';
 import { fetchJson } from './http.ts';
@@ -31,42 +32,64 @@ function oauthPath(providerId: string, baseUrl: string): string {
   return `${baseUrl}/v1/oauth/${encodeURIComponent(providerId)}`;
 }
 
+interface ConnectTokenResponse {
+  connect_token: string;
+  expires_in: number;
+}
+
+/**
+ * Mints a short-lived single-use connect token bound to the authenticated
+ * user. `/start` is a top-level navigation that cannot carry a bearer header,
+ * so this token carries the identity instead.
+ */
+export async function createOAuthConnectToken(
+  options: OAuthRequestOptions = {},
+): Promise<string> {
+  const baseUrl = options.baseUrl ?? getApiBaseUrl();
+
+  const response = await fetchJson<ConnectTokenResponse>(
+    `${baseUrl}/v1/oauth/connect-token`,
+    {
+      method: 'POST',
+      headers: { accept: 'application/json' },
+      signal: options.signal,
+    },
+  );
+  return response.connect_token;
+}
+
 /** Builds the browser navigation URL to start OAuth consent for a provider. */
 export function buildOAuthStartUrl(
   providerId: string,
-  userId: string,
+  connectToken: string,
   baseUrl: string = getApiBaseUrl(),
 ): string {
-  const params = new URLSearchParams({ user_id: userId });
+  const params = new URLSearchParams({ connect_token: connectToken });
   return `${oauthPath(providerId, baseUrl)}/start?${params}`;
 }
 
-/** Reports OAuth connection state and scope coverage for a user and provider. */
+/** Reports OAuth connection state and scope coverage for the authenticated user. */
 export async function getOAuthStatus(
   providerId: string,
-  userId: string,
   options: OAuthRequestOptions = {},
 ): Promise<OAuthStatusResponse> {
   const baseUrl = options.baseUrl ?? getApiBaseUrl();
-  const params = new URLSearchParams({ user_id: userId });
 
-  return fetchJson<OAuthStatusResponse>(`${oauthPath(providerId, baseUrl)}/status?${params}`, {
+  return fetchJson<OAuthStatusResponse>(`${oauthPath(providerId, baseUrl)}/status`, {
     method: 'GET',
     headers: { accept: 'application/json' },
     signal: options.signal,
   });
 }
 
-/** Deletes stored OAuth tokens for a user and provider. */
+/** Deletes the authenticated user's stored OAuth tokens for a provider. */
 export async function disconnectOAuth(
   providerId: string,
-  userId: string,
   options: OAuthRequestOptions = {},
 ): Promise<void> {
   const baseUrl = options.baseUrl ?? getApiBaseUrl();
-  const params = new URLSearchParams({ user_id: userId });
 
-  const response = await fetch(`${oauthPath(providerId, baseUrl)}?${params}`, {
+  const response = await authFetch(oauthPath(providerId, baseUrl), {
     method: 'DELETE',
     headers: { accept: 'application/json' },
     signal: options.signal,

@@ -15,15 +15,25 @@ Fully native (no WebView) under `android/app/src/main/java/app/ember/mobile/assi
 | `EmberSessionService` / `EmberAssistSession` | Creates and drives the overlay UI state machine |
 | `EmberStubRecognitionService` | Stub; the metadata requires a `recognitionService` attribute |
 | `SpeechTurnRecognizer` | One `SpeechRecognizer` per utterance; its endpointing triggers the send |
-| `RespondClient` | OkHttp SSE client for `POST /v1/respond` (mirrors `src/api/sse.ts` framing) |
+| `RespondClient` | OkHttp SSE client for `POST /v1/respond` (mirrors `src/api/sse.ts` framing); sends `Authorization: Bearer` |
 | `FlameView` | Canvas flame; height/flicker driven by `onRmsChanged` through an attack/decay envelope |
-| `EmberSettings` | Reads server URL / user id / mic language from `CapacitorStorage` SharedPreferences |
+| `EmberSettings` | Reads server URL / mic language from `CapacitorStorage` SharedPreferences |
+| `AuthTokenStore` | Reads/writes `ts-llm.access_token` + `ts-llm.refresh_token` in the same store |
+| `TokenAuthenticator` | OkHttp authenticator: on 401 calls `POST /v1/auth/refresh`, persists the rotated pair, retries once |
 
 Settings reach native code via a write-through mirror: the web app copies
-`ts-llm.server_url`, `ts-llm.user_id`, and `ts-llm.mic_language` into
-`@capacitor/preferences` on every change (see `src/native/settingsMirror.ts`),
-whose Android backing store the assistant can read. localStorage stays the
-source of truth.
+`ts-llm.server_url` and `ts-llm.mic_language` into `@capacitor/preferences` on
+every change (see `src/native/settingsMirror.ts`), whose Android backing store
+the assistant can read. localStorage stays the source of truth for settings.
+
+Auth tokens use the same store but flow both ways: the web app mirrors
+`ts-llm.access_token` / `ts-llm.refresh_token` on login and refresh, and the
+native layer writes back the pair it receives from `POST /v1/auth/refresh`
+(the mirrored access token is usually expired by the time the assistant fires,
+so native refresh is the normal path). Identity comes from the bearer token —
+`user_id` is never sent by the client. If the refresh token is rejected the
+native layer clears both keys (session is dead everywhere); if no tokens are
+present the overlay shows a "sign in first" hint without calling the server.
 
 Server sessions are ephemeral per invocation: the first turn starts a new
 session, follow-ups while the overlay is open reuse its `session_id`, and
@@ -33,6 +43,8 @@ dismissing the overlay drops it.
 
 - The agent server URL must be set in Ember's Settings (the assistant shows a
   hint otherwise).
+- You must be signed in to Ember; the assistant reuses the web app's mirrored
+  session tokens and shows a "sign in first" hint when they are absent.
 - `RECORD_AUDIO` must already be granted — open Ember and use the mic once, or
   `adb shell pm grant app.ember.mobile android.permission.RECORD_AUDIO`. The
   assistant overlay cannot show permission dialogs itself.

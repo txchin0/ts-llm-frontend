@@ -1,3 +1,4 @@
+import { authFetch } from './auth.ts';
 import { ApiHttpError } from './errors.ts';
 
 interface ValidationErrorBody {
@@ -13,9 +14,13 @@ function isValidationErrorBody(value: unknown): value is ValidationErrorBody {
   return body.code === 'validation_error' && typeof body.message === 'string';
 }
 
-/** Parses JSON from a fetch response and maps API validation errors to ApiHttpError. */
+/**
+ * Authenticated JSON fetch: attaches the bearer token (with 401
+ * refresh-and-retry via authFetch) and maps API validation errors to
+ * ApiHttpError.
+ */
 export async function fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(url, options);
+  const response = await authFetch(url, options);
 
   if (!response.ok) {
     if (response.status === 400) {

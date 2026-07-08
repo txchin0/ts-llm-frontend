@@ -9,6 +9,7 @@ import styles from './SettingsDialog.module.css';
 interface SettingsDialogProps {
   open: boolean;
   userId: string;
+  onLogout: () => void;
   hasActiveSession: boolean;
   serverUrl: string;
   onServerUrlChange: (next: string) => void;
@@ -32,6 +33,7 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
 export function SettingsDialog({
   open,
   userId,
+  onLogout,
   hasActiveSession,
   serverUrl,
   onServerUrlChange,
@@ -46,6 +48,7 @@ export function SettingsDialog({
   onClose,
 }: SettingsDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const accountSectionId = useId();
   const displaySectionId = useId();
   const serverSectionId = useId();
   const serverUrlId = useId();
@@ -79,6 +82,21 @@ export function SettingsDialog({
         <div className={styles.header}>
           <h2 className={styles.title}>Settings</h2>
         </div>
+
+        <section className={styles.section} aria-labelledby={accountSectionId}>
+          <h3 className={styles.sectionTitle} id={accountSectionId}>
+            Account
+          </h3>
+          <div className={styles.field}>
+            <p className={styles.hint}>
+              Signed in as <strong>{userId}</strong>.
+              {hasActiveSession ? ' Signing out clears this chat.' : ''}
+            </p>
+            <button type="button" className={styles.button} onClick={onLogout}>
+              Sign out
+            </button>
+          </div>
+        </section>
 
         <section className={styles.section} aria-labelledby={serverSectionId}>
           <h3 className={styles.sectionTitle} id={serverSectionId}>
@@ -188,11 +206,7 @@ export function SettingsDialog({
           </div>
         </section>
 
-        <IntegrationsSection
-          userId={userId}
-          hasActiveSession={hasActiveSession}
-          open={open}
-        />
+        <IntegrationsSection hasActiveSession={hasActiveSession} open={open} />
 
         <div className={styles.actions}>
           <button type="button" className={`${styles.button} ${styles.done}`} onClick={onClose}>
