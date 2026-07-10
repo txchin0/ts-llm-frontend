@@ -54,3 +54,25 @@ export async function apiErrorFromResponse(response: Response): Promise<ApiHttpE
   }
   return new ApiHttpError(response.status, response.statusText, message);
 }
+
+/**
+ * Parse a successful response body as JSON, or throw with the shared
+ * "Server URL points at the wrong origin" hint. Used by both authenticated
+ * and public JSON callers so that policy lives in one place.
+ */
+export async function readJsonOrThrow<T>(response: Response): Promise<T> {
+  try {
+    return (await response.json()) as T;
+  } catch {
+    // A 2xx response that isn't JSON almost always means the request never
+    // reached the agent server: on the native app an empty/relative base URL
+    // resolves to the WebView origin, which serves the app's own index.html.
+    const contentType = response.headers?.get?.('content-type') ?? undefined;
+    const detail = contentType ? ` (received ${contentType})` : '';
+    throw new ApiHttpError(
+      response.status,
+      response.statusText,
+      `The agent server did not return JSON${detail}. Check that the Server URL in Settings points at the agent server.`,
+    );
+  }
+}

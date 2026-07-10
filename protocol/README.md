@@ -15,6 +15,6 @@ To change the protocol: edit the fixture first, run `npm test` and
 `android/gradlew -p android test` — the failing side tells you exactly what to
 update. Never change one spelling without the fixture.
 
-Web path constants are not duplicated: they are `export const … = endpoints.…`
-from the JSON. Kotlin keeps local constants (no JSON at runtime) and fails the
-unit test if they drift.
+Web path and handshake-key constants are not duplicated: they are
+`export const … = endpoints.…` / `handshake.keys.…` from the JSON. Kotlin keeps
+local constants (no JSON at runtime) and fails the unit test if they drift.

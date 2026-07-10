@@ -1,6 +1,6 @@
 import { authFetch } from './auth.ts';
 import { resolveApiUrl } from './config.ts';
-import { apiErrorFromResponse, ApiHttpError } from './errors.ts';
+import { apiErrorFromResponse, readJsonOrThrow } from './errors.ts';
 
 export { fetchJsonPublic } from './publicHttp.ts';
 
@@ -39,22 +39,7 @@ async function request(path: string, init: ApiRequestInit): Promise<Response> {
 }
 
 export async function fetchJson<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
-  const response = await request(path, init);
-
-  try {
-    return (await response.json()) as T;
-  } catch {
-    // A 2xx response that isn't JSON almost always means the request never
-    // reached the agent server: on the native app an empty/relative base URL
-    // resolves to the WebView origin, which serves the app's own index.html.
-    const contentType = response.headers?.get?.('content-type') ?? undefined;
-    const detail = contentType ? ` (received ${contentType})` : '';
-    throw new ApiHttpError(
-      response.status,
-      response.statusText,
-      `The agent server did not return JSON${detail}. Check that the Server URL in Settings points at the agent server.`,
-    );
-  }
+  return readJsonOrThrow<T>(await request(path, init));
 }
 
 /** Authenticated request whose success carries no JSON body (e.g. DELETE). */

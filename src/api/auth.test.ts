@@ -57,8 +57,18 @@ function refreshBody(access: string, refresh: string) {
 }
 
 function bearerOf(init: RequestInit | undefined): string | undefined {
-  const headers = init?.headers as Record<string, string> | undefined;
-  return headers?.authorization;
+  if (init?.headers == null) {
+    return undefined;
+  }
+  if (init.headers instanceof Headers) {
+    return init.headers.get('authorization') ?? undefined;
+  }
+  if (Array.isArray(init.headers)) {
+    const entry = init.headers.find(([key]) => key.toLowerCase() === 'authorization');
+    return entry?.[1];
+  }
+  const record = init.headers as Record<string, string>;
+  return record.authorization ?? record.Authorization;
 }
 
 function stubFetch(impl: (url: string, init?: RequestInit) => Promise<Response>): FetchMock {

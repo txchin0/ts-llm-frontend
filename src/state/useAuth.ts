@@ -13,16 +13,21 @@ import {
 
 const USER_ID_KEY = 'ts-llm.user_id';
 
-export type AuthStatus = 'initializing' | 'signedOut' | 'signedIn';
-
-export interface Auth {
-  status: AuthStatus;
-  /** The signed-in account id ('' while signed out). */
-  userId: string;
+export type AuthActions = {
   login: (userId: string, password: string) => Promise<void>;
   register: (userId: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-}
+};
+
+/**
+ * Session state derived from the stored token pair. Discriminated so signed-out
+ * still carries `lastUserId` for login prefill without pretending the user is
+ * signed in (`userId: ''` while signed out was a fake empty identity).
+ */
+export type Auth =
+  | ({ status: 'initializing' } & AuthActions)
+  | ({ status: 'signedOut'; lastUserId: string } & AuthActions)
+  | ({ status: 'signedIn'; userId: string } & AuthActions);
 
 function readStoredUserId(): string {
   try {
@@ -50,7 +55,7 @@ function writeStoredUserId(userId: string): void {
  * assistant may have rotated or cleared the pair since the WebView last ran).
  */
 export function useAuth(): Auth {
-  const [status, setStatus] = useState<AuthStatus>('initializing');
+  const [status, setStatus] = useState<'initializing' | 'signedOut' | 'signedIn'>('initializing');
   const [userId, setUserId] = useState<string>(readStoredUserId);
 
   useEffect(() => {
@@ -97,5 +102,13 @@ export function useAuth(): Auth {
     await apiLogout();
   }, []);
 
-  return { status, userId: status === 'signedIn' ? userId : '', login, register, logout };
+  const actions: AuthActions = { login, register, logout };
+
+  if (status === 'initializing') {
+    return { status, ...actions };
+  }
+  if (status === 'signedOut') {
+    return { status, lastUserId: userId, ...actions };
+  }
+  return { status, userId, ...actions };
 }

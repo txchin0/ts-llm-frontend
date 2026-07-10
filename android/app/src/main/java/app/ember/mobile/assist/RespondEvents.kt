@@ -20,7 +20,8 @@ sealed interface RespondEvent {
          * - [RespondParseResult.Rendered]: overlay should surface it
          * - [RespondParseResult.Ignored]: blank, or a known type the overlay
          *   does not render (thinking_delta, usage, tool_result)
-         * - [RespondParseResult.Malformed]: unparseable JSON or unknown type
+         * - [RespondParseResult.Malformed]: unparseable JSON, unknown type, or
+         *   a known renderable type missing required fields
          */
         fun parse(payload: String): RespondParseResult {
             if (payload.isBlank()) return RespondParseResult.Ignored
@@ -35,13 +36,13 @@ sealed interface RespondEvent {
             return when (type) {
                 "start" -> json.optString("session_id").takeIf { it.isNotEmpty() }
                     ?.let { RespondParseResult.Rendered(SessionStarted(it)) }
-                    ?: RespondParseResult.Ignored
+                    ?: RespondParseResult.Malformed("incomplete start event")
                 "delta" -> json.optString("text").takeIf { it.isNotEmpty() }
                     ?.let { RespondParseResult.Rendered(Delta(it)) }
-                    ?: RespondParseResult.Ignored
+                    ?: RespondParseResult.Malformed("incomplete delta event")
                 "tool_call" -> json.optString("tool_name").takeIf { it.isNotEmpty() }
                     ?.let { RespondParseResult.Rendered(ToolActivity(it)) }
-                    ?: RespondParseResult.Ignored
+                    ?: RespondParseResult.Malformed("incomplete tool_call event")
                 "final" -> RespondParseResult.Rendered(Final)
                 "error" -> RespondParseResult.Rendered(
                     Error(json.optString("message").ifEmpty { "Agent error" }),

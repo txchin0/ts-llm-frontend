@@ -83,6 +83,22 @@ class RespondProtocolTest {
     }
 
     @Test
+    fun `flags known types missing required fields as malformed`() {
+        val incompleteStart = RespondEvent.parse("""{"type":"start"}""")
+        assertTrue(incompleteStart is RespondParseResult.Malformed)
+        assertEquals(
+            "incomplete start event",
+            (incompleteStart as RespondParseResult.Malformed).detail,
+        )
+
+        val emptyDelta = RespondEvent.parse("""{"type":"delta","text":""}""")
+        assertTrue(emptyDelta is RespondParseResult.Malformed)
+
+        val incompleteTool = RespondEvent.parse("""{"type":"tool_call"}""")
+        assertTrue(incompleteTool is RespondParseResult.Malformed)
+    }
+
+    @Test
     fun `accumulates the canonical wire stream back to the canonical events`() {
         val rawLines = respond.getJSONArray("rawStreamLines")
         val accumulator = SseDataAccumulator()

@@ -28,7 +28,7 @@ export function App() {
   if (auth.status === 'signedOut') {
     return (
       <AuthScreen
-        initialUserId={auth.userId}
+        initialUserId={auth.lastUserId}
         onLogin={auth.login}
         onRegister={auth.register}
         // On native there is no same-origin default; the server must be
@@ -48,7 +48,7 @@ export function App() {
 }
 
 interface ChatAppProps {
-  auth: Auth;
+  auth: Extract<Auth, { status: 'signedIn' }>;
   settings: Settings;
 }
 

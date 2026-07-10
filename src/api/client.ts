@@ -5,24 +5,72 @@ import { apiErrorFromResponse } from './errors.ts';
 import { parseSseFrames } from './sse.ts';
 import {
   isRespondSseEvent,
+  RESPOND_EVENT_TYPES,
   type RespondRequest,
   type RespondSseEvent,
+  type RespondSseEventType,
 } from './types.ts';
 
 export { ApiHttpError } from './errors.ts';
 export { RESPOND_PATH } from './endpoints.ts';
 
-export interface RespondUnknownEvent {
-  type: 'unknown';
+/**
+ * Wire corruption or vocabulary the client cannot accept: unparseable JSON,
+ * unknown event types, or known types missing required fields. Mirrors
+ * Android's RespondParseResult.Malformed — not an intentional skip.
+ */
+export interface RespondMalformedEvent {
+  type: 'malformed';
+  detail: string;
   eventName?: string;
   raw: unknown;
 }
 
-export type RespondStreamEvent = RespondSseEvent | RespondUnknownEvent;
+export type RespondStreamEvent = RespondSseEvent | RespondMalformedEvent;
 
 export interface RespondStreamOptions {
   signal?: AbortSignal;
   baseUrl?: string;
+}
+
+const KNOWN_EVENT_TYPES = new Set<string>(RESPOND_EVENT_TYPES);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+/** Classify a parsed SSE JSON payload into a typed event or a malformed outcome. */
+export function classifyRespondPayload(
+  parsed: unknown,
+  eventName?: string,
+): RespondStreamEvent {
+  if (isRespondSseEvent(parsed)) {
+    return parsed;
+  }
+
+  if (isRecord(parsed) && typeof parsed.type === 'string') {
+    if (KNOWN_EVENT_TYPES.has(parsed.type)) {
+      return {
+        type: 'malformed',
+        detail: `incomplete ${parsed.type as RespondSseEventType} event`,
+        eventName,
+        raw: parsed,
+      };
+    }
+    return {
+      type: 'malformed',
+      detail: `unknown event type: ${parsed.type || '(missing)'}`,
+      eventName,
+      raw: parsed,
+    };
+  }
+
+  return {
+    type: 'malformed',
+    detail: 'not a respond event object',
+    eventName,
+    raw: parsed,
+  };
 }
 
 /**
@@ -55,14 +103,15 @@ export async function* respondStream(
     try {
       parsed = JSON.parse(frame.data);
     } catch {
-      yield { type: 'unknown', eventName: frame.eventName, raw: frame.data };
+      yield {
+        type: 'malformed',
+        detail: 'unparseable JSON',
+        eventName: frame.eventName,
+        raw: frame.data,
+      };
       continue;
     }
 
-    if (isRespondSseEvent(parsed)) {
-      yield parsed;
-    } else {
-      yield { type: 'unknown', eventName: frame.eventName, raw: parsed };
-    }
+    yield classifyRespondPayload(parsed, frame.eventName);
   }
 }
