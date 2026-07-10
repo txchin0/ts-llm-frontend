@@ -1,7 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 
-import { SERVER_URL_KEY } from '../api/config.ts';
+import { MIC_LANGUAGE_KEY, SERVER_URL_KEY } from './handshake.ts';
 
 /**
  * Mirrors the settings the native assistant needs (server URL, mic language)
@@ -14,7 +14,7 @@ import { SERVER_URL_KEY } from '../api/config.ts';
  * native layer writes back rotated pairs) — see src/api/authTokens.ts.
  */
 
-export const MIRRORED_SETTING_KEYS = [SERVER_URL_KEY, 'ts-llm.mic_language'];
+export const MIRRORED_SETTING_KEYS = [SERVER_URL_KEY, MIC_LANGUAGE_KEY];
 
 export function mirrorSettingToNative(key: string, value: string): void {
   if (!Capacitor.isNativePlatform()) return;

@@ -1,7 +1,6 @@
-import { getApiBaseUrl } from './config.ts';
 import { fetchJson } from './http.ts';
 
-const INTEGRATIONS_PATH = '/v1/integrations';
+export const INTEGRATIONS_PATH = '/v1/integrations';
 
 export interface IntegrationSummary {
   id: string;
@@ -28,12 +27,9 @@ export type IntegrationEnablementPatch = {
 export async function listIntegrations(
   options: IntegrationsRequestOptions = {},
 ): Promise<ListIntegrationsResponse> {
-  const baseUrl = options.baseUrl ?? getApiBaseUrl();
-
-  return fetchJson<ListIntegrationsResponse>(`${baseUrl}${INTEGRATIONS_PATH}`, {
-    method: 'GET',
-    headers: { accept: 'application/json' },
+  return fetchJson<ListIntegrationsResponse>(INTEGRATIONS_PATH, {
     signal: options.signal,
+    baseUrl: options.baseUrl,
   });
 }
 
@@ -42,15 +38,10 @@ export async function updateIntegrations(
   patches: Record<string, IntegrationEnablementPatch>,
   options: IntegrationsRequestOptions = {},
 ): Promise<ListIntegrationsResponse> {
-  const baseUrl = options.baseUrl ?? getApiBaseUrl();
-
-  return fetchJson<ListIntegrationsResponse>(`${baseUrl}${INTEGRATIONS_PATH}`, {
+  return fetchJson<ListIntegrationsResponse>(INTEGRATIONS_PATH, {
     method: 'PUT',
-    headers: {
-      accept: 'application/json',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({ integrations: patches }),
+    json: { integrations: patches },
     signal: options.signal,
+    baseUrl: options.baseUrl,
   });
 }

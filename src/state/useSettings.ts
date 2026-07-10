@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { SERVER_URL_KEY } from '../api/config.ts';
 import { themeColorHex } from '../brand.ts';
+import { MIC_LANGUAGE_KEY, SERVER_URL_KEY } from '../native/handshake.ts';
 import {
   bootstrapNativeSettingsMirror,
   mirrorSettingToNative,
@@ -15,7 +15,6 @@ export type ThemePreference = 'light' | 'dark' | 'system';
 export type ResolvedTheme = 'light' | 'dark';
 
 const THEME_KEY = 'ts-llm.theme';
-const MIC_LANGUAGE_KEY = 'ts-llm.mic_language';
 const SHOW_THINKING_KEY = 'ts-llm.show_thinking';
 const SHOW_TOOL_CALLS_KEY = 'ts-llm.show_tool_calls';
 const DEFAULT_SHOW_TOOL_CALLS = true;

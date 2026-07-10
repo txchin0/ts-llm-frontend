@@ -1,6 +1,6 @@
 import { authFetch } from './auth.ts';
-import { getApiBaseUrl } from './config.ts';
-import { ApiHttpError } from './errors.ts';
+import { resolveApiUrl } from './config.ts';
+import { apiErrorFromResponse } from './errors.ts';
 import { parseSseFrames } from './sse.ts';
 import {
   isRespondSseEvent,
@@ -8,9 +8,9 @@ import {
   type RespondSseEvent,
 } from './types.ts';
 
-export { ApiHttpError, RespondHttpError } from './errors.ts';
+export { ApiHttpError } from './errors.ts';
 
-const RESPOND_PATH = '/v1/respond';
+export const RESPOND_PATH = '/v1/respond';
 
 export interface RespondUnknownEvent {
   type: 'unknown';
@@ -33,9 +33,7 @@ export async function* respondStream(
   request: RespondRequest,
   options: RespondStreamOptions = {},
 ): AsyncGenerator<RespondStreamEvent> {
-  const baseUrl = options.baseUrl ?? getApiBaseUrl();
-
-  const response = await authFetch(`${baseUrl}${RESPOND_PATH}`, {
+  const response = await authFetch(resolveApiUrl(RESPOND_PATH, options.baseUrl), {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -46,7 +44,7 @@ export async function* respondStream(
   });
 
   if (!response.ok) {
-    throw new ApiHttpError(response.status, response.statusText);
+    throw await apiErrorFromResponse(response);
   }
   if (!response.body) {
     throw new Error('The agent server returned an empty response body.');

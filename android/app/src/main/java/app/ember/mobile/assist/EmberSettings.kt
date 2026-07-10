@@ -17,9 +17,10 @@ data class EmberSettings(
     val micLanguage: String,
 ) {
     companion object {
-        private const val STORE = "CapacitorStorage"
-        private const val KEY_SERVER_URL = "ts-llm.server_url"
-        private const val KEY_MIC_LANGUAGE = "ts-llm.mic_language"
+        // Shared with the web app; contract-tested against protocol/handshake.json.
+        internal const val STORE = "CapacitorStorage"
+        internal const val KEY_SERVER_URL = "ts-llm.server_url"
+        internal const val KEY_MIC_LANGUAGE = "ts-llm.mic_language"
 
         fun load(context: Context): EmberSettings {
             val prefs = context.getSharedPreferences(STORE, Context.MODE_PRIVATE)

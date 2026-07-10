@@ -1,7 +1,6 @@
-import { authFetch } from './auth.ts';
-import { getApiBaseUrl } from './config.ts';
+import { resolveApiUrl } from './config.ts';
 import { ApiHttpError } from './errors.ts';
-import { fetchJson } from './http.ts';
+import { fetchJson, fetchNoContent } from './http.ts';
 
 export interface OAuthStatusResponse {
   connected: boolean;
@@ -14,22 +13,10 @@ export interface OAuthRequestOptions {
   baseUrl?: string;
 }
 
-interface OAuthErrorBody {
-  code: string;
-  message: string;
-  provider_id?: string;
-}
+export const OAUTH_CONNECT_TOKEN_PATH = '/v1/oauth/connect-token';
 
-function isOAuthErrorBody(value: unknown): value is OAuthErrorBody {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-  const body = value as { code?: unknown; message?: unknown };
-  return typeof body.code === 'string' && typeof body.message === 'string';
-}
-
-function oauthPath(providerId: string, baseUrl: string): string {
-  return `${baseUrl}/v1/oauth/${encodeURIComponent(providerId)}`;
+function oauthPath(providerId: string): string {
+  return `/v1/oauth/${encodeURIComponent(providerId)}`;
 }
 
 interface ConnectTokenResponse {
@@ -45,16 +32,11 @@ interface ConnectTokenResponse {
 export async function createOAuthConnectToken(
   options: OAuthRequestOptions = {},
 ): Promise<string> {
-  const baseUrl = options.baseUrl ?? getApiBaseUrl();
-
-  const response = await fetchJson<ConnectTokenResponse>(
-    `${baseUrl}/v1/oauth/connect-token`,
-    {
-      method: 'POST',
-      headers: { accept: 'application/json' },
-      signal: options.signal,
-    },
-  );
+  const response = await fetchJson<ConnectTokenResponse>(OAUTH_CONNECT_TOKEN_PATH, {
+    method: 'POST',
+    signal: options.signal,
+    baseUrl: options.baseUrl,
+  });
   return response.connect_token;
 }
 
@@ -62,10 +44,10 @@ export async function createOAuthConnectToken(
 export function buildOAuthStartUrl(
   providerId: string,
   connectToken: string,
-  baseUrl: string = getApiBaseUrl(),
+  baseUrl?: string,
 ): string {
   const params = new URLSearchParams({ connect_token: connectToken });
-  return `${oauthPath(providerId, baseUrl)}/start?${params}`;
+  return resolveApiUrl(`${oauthPath(providerId)}/start?${params}`, baseUrl);
 }
 
 /** Reports OAuth connection state and scope coverage for the authenticated user. */
@@ -73,12 +55,9 @@ export async function getOAuthStatus(
   providerId: string,
   options: OAuthRequestOptions = {},
 ): Promise<OAuthStatusResponse> {
-  const baseUrl = options.baseUrl ?? getApiBaseUrl();
-
-  return fetchJson<OAuthStatusResponse>(`${oauthPath(providerId, baseUrl)}/status`, {
-    method: 'GET',
-    headers: { accept: 'application/json' },
+  return fetchJson<OAuthStatusResponse>(`${oauthPath(providerId)}/status`, {
     signal: options.signal,
+    baseUrl: options.baseUrl,
   });
 }
 
@@ -87,29 +66,11 @@ export async function disconnectOAuth(
   providerId: string,
   options: OAuthRequestOptions = {},
 ): Promise<void> {
-  const baseUrl = options.baseUrl ?? getApiBaseUrl();
-
-  const response = await authFetch(oauthPath(providerId, baseUrl), {
+  await fetchNoContent(oauthPath(providerId), {
     method: 'DELETE',
-    headers: { accept: 'application/json' },
     signal: options.signal,
+    baseUrl: options.baseUrl,
   });
-
-  if (!response.ok) {
-    if (response.status === 400) {
-      try {
-        const body: unknown = await response.json();
-        if (isOAuthErrorBody(body)) {
-          throw new ApiHttpError(response.status, response.statusText, body.message);
-        }
-      } catch (error) {
-        if (error instanceof ApiHttpError) {
-          throw error;
-        }
-      }
-    }
-    throw new ApiHttpError(response.status, response.statusText);
-  }
 }
 
 const OAUTH_PROVIDER_LABELS: Record<string, string> = {

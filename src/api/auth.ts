@@ -7,8 +7,8 @@ import {
   getRefreshToken,
   setAuthTokens,
 } from './authTokens.ts';
-import { getApiBaseUrl } from './config.ts';
-import { ApiHttpError } from './errors.ts';
+import { resolveApiUrl } from './config.ts';
+import { apiErrorFromResponse, ApiHttpError } from './errors.ts';
 
 /**
  * Auth endpoints plus the shared authenticated fetch. `authFetch` is the one
@@ -24,38 +24,18 @@ export interface AuthTokensResponse {
   refresh_token: string;
 }
 
-interface AuthErrorBody {
-  code: string;
-  message: string;
-}
-
-function isAuthErrorBody(value: unknown): value is AuthErrorBody {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-  const body = value as { code?: unknown; message?: unknown };
-  return typeof body.code === 'string' && typeof body.message === 'string';
-}
+export const AUTH_PATH_PREFIX = '/v1/auth';
 
 /** POSTs to an auth endpoint (no bearer, no retry) and returns parsed JSON. */
 async function postAuth<T>(path: string, payload: unknown): Promise<T> {
-  const response = await fetch(`${getApiBaseUrl()}/v1/auth/${path}`, {
+  const response = await fetch(resolveApiUrl(`${AUTH_PATH_PREFIX}/${path}`), {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json' },
     body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
-    let message: string | undefined;
-    try {
-      const body: unknown = await response.json();
-      if (isAuthErrorBody(body)) {
-        message = body.message;
-      }
-    } catch {
-      // Non-JSON error body; fall through to the generic message.
-    }
-    throw new ApiHttpError(response.status, response.statusText, message);
+    throw await apiErrorFromResponse(response);
   }
 
   return (await response.json()) as T;
@@ -138,7 +118,10 @@ async function runRefresh(): Promise<boolean> {
 /**
  * `fetch` with the access token attached. On a 401 it refreshes once and
  * retries; the retried response is returned as-is (a second 401 means the
- * session is gone and the caller surfaces it).
+ * session is gone and the caller surfaces it). On the native app a 401 also
+ * re-reads the Capacitor Preferences store first, adopting a token pair the
+ * voice assistant may have rotated — that platform dependency is part of this
+ * interface, not visible in the signature.
  */
 export async function authFetch(url: string, init: RequestInit = {}): Promise<Response> {
   const attempt = (): Promise<Response> => {

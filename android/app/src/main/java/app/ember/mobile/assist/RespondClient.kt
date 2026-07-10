@@ -16,10 +16,11 @@ import org.json.JSONObject
 
 /**
  * Streams a chat turn from the ts-llm agent server: POST /v1/respond with an
- * SSE response. Mirrors the web client (src/api/client.ts + sse.ts): frames
- * are blank-line separated, payload JSON carries the event `type`. Only the
- * events the overlay renders are surfaced; thinking/usage/tool_result are
- * ignored. All callbacks are delivered on the main thread.
+ * SSE response. Wire knowledge lives behind [SseDataAccumulator] (frame
+ * grammar) and [RespondEvent.parse] (event vocabulary), both contract-tested
+ * against protocol/respond.json alongside the web client. Only the events the
+ * overlay renders are surfaced; thinking/usage/tool_result are ignored. All
+ * callbacks are delivered on the main thread.
  *
  * Identity comes from the bearer token, never from the body. A 401 is
  * refreshed + retried once by [TokenAuthenticator]; if it still fails the
@@ -49,7 +50,7 @@ class RespondClient(private val baseUrl: String, private val tokens: AuthTokenSt
             if (sessionId != null) put("session_id", sessionId)
         }
         val request = Request.Builder()
-            .url("$baseUrl/v1/respond")
+            .url("$baseUrl$RESPOND_PATH")
             .header("accept", "text/event-stream")
             .apply {
                 // May be absent/expired (assistant outlives the WebView); the
@@ -85,23 +86,13 @@ class RespondClient(private val baseUrl: String, private val tokens: AuthTokenSt
                         return
                     }
 
-                    val dataLines = StringBuilder()
+                    val accumulator = SseDataAccumulator()
                     try {
                         while (true) {
                             val line = source.readUtf8Line() ?: break
-                            when {
-                                line.isEmpty() -> {
-                                    dispatch(dataLines.toString(), callbacks)
-                                    dataLines.setLength(0)
-                                }
-                                line.startsWith("data:") -> {
-                                    if (dataLines.isNotEmpty()) dataLines.append('\n')
-                                    dataLines.append(line.removePrefix("data:").removePrefix(" "))
-                                }
-                                // event:/id:/comment lines carry nothing we need.
-                            }
+                            accumulator.feed(line)?.let { dispatch(it, callbacks) }
                         }
-                        dispatch(dataLines.toString(), callbacks)
+                        accumulator.flush()?.let { dispatch(it, callbacks) }
                     } catch (e: IOException) {
                         if (!call.isCanceled()) {
                             post { callbacks.onError(e.message ?: "Stream interrupted") }
@@ -114,22 +105,13 @@ class RespondClient(private val baseUrl: String, private val tokens: AuthTokenSt
     }
 
     private fun dispatch(payload: String, callbacks: Callbacks) {
-        if (payload.isBlank()) return
-        val json = try {
-            JSONObject(payload)
-        } catch (e: Exception) {
-            Log.w(TAG, "unparseable SSE payload: ${payload.take(120)}", e)
-            return
-        }
-        when (json.optString("type")) {
-            "start" -> json.optString("session_id").takeIf { it.isNotEmpty() }
-                ?.let { id -> post { callbacks.onSessionStarted(id) } }
-            "delta" -> json.optString("text").takeIf { it.isNotEmpty() }
-                ?.let { text -> post { callbacks.onDelta(text) } }
-            "tool_call" -> json.optString("tool_name").takeIf { it.isNotEmpty() }
-                ?.let { name -> post { callbacks.onToolActivity(name) } }
-            "final" -> post { callbacks.onFinal() }
-            "error" -> post { callbacks.onError(json.optString("message").ifEmpty { "Agent error" }) }
+        when (val event = RespondEvent.parse(payload)) {
+            is RespondEvent.SessionStarted -> post { callbacks.onSessionStarted(event.sessionId) }
+            is RespondEvent.Delta -> post { callbacks.onDelta(event.text) }
+            is RespondEvent.ToolActivity -> post { callbacks.onToolActivity(event.toolName) }
+            RespondEvent.Final -> post { callbacks.onFinal() }
+            is RespondEvent.Error -> post { callbacks.onError(event.message) }
+            null -> Unit // blank/unparseable, or an event the overlay doesn't render
         }
     }
 
@@ -137,7 +119,9 @@ class RespondClient(private val baseUrl: String, private val tokens: AuthTokenSt
         mainHandler.post(block)
     }
 
-    private companion object {
-        const val TAG = "EmberAssist"
+    companion object {
+        /** Contract-tested against protocol/respond.json (endpoints.respond). */
+        internal const val RESPOND_PATH = "/v1/respond"
+        private const val TAG = "EmberAssist"
     }
 }

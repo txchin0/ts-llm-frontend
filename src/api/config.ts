@@ -13,9 +13,25 @@
  * next `fetch` reads.
  */
 
-/** localStorage key holding the configured agent-server URL. Owned here so the
- * settings layer and API layer share one constant (state imports from api). */
-export const SERVER_URL_KEY = 'ts-llm.server_url';
+import { SERVER_URL_KEY } from '../native/handshake.ts';
+
+export { SERVER_URL_KEY };
+
+/**
+ * Normalizes a stored server URL to a usable base: trim, strip trailing
+ * slashes, assume http:// for a bare host:port (a base without a scheme
+ * would resolve relative to the WebView origin and hit the app itself).
+ * Returns `''` when unset. The Kotlin assistant implements the same rules
+ * (EmberSettings.normalizeServerUrl); the shared cases live in
+ * protocol/handshake.json and are parity-tested on both sides.
+ */
+export function normalizeServerUrl(raw: string): string {
+  const trimmed = raw.trim().replace(/\/+$/, '');
+  if (trimmed === '') {
+    return '';
+  }
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+}
 
 /**
  * The configured agent-server base URL, or `''` when unset (relative requests,
@@ -24,16 +40,17 @@ export const SERVER_URL_KEY = 'ts-llm.server_url';
  */
 export function getApiBaseUrl(): string {
   try {
-    const raw = (localStorage.getItem(SERVER_URL_KEY) ?? '').trim().replace(/\/+$/, '');
-    if (raw === '') {
-      return '';
-    }
-    // A base without a scheme resolves relative to the WebView origin
-    // (http://localhost) and would hit the app itself, not the agent server.
-    // Assume http for a bare host:port (matches the plain-HTTP LAN setup).
-    return /^https?:\/\//i.test(raw) ? raw : `http://${raw}`;
+    return normalizeServerUrl(localStorage.getItem(SERVER_URL_KEY) ?? '');
   } catch {
     // Storage unavailable (private mode / SSR / jsdom-unset) → relative, as today.
     return '';
   }
+}
+
+/**
+ * Resolves an API path against the configured base URL, or an explicit
+ * override (test seam). The only place paths and the base URL meet.
+ */
+export function resolveApiUrl(path: string, baseUrl?: string): string {
+  return `${baseUrl ?? getApiBaseUrl()}${path}`;
 }

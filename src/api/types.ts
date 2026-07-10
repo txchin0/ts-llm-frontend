@@ -97,16 +97,26 @@ export type RespondSseEvent =
 
 export type RespondSseEventType = RespondSseEvent['type'];
 
-const KNOWN_EVENT_TYPES: ReadonlySet<string> = new Set<RespondSseEventType>([
-  'start',
-  'delta',
-  'thinking_delta',
-  'final',
-  'usage',
-  'tool_call',
-  'tool_result',
-  'error',
-]);
+// Mapped-object form so the compiler enforces exhaustiveness in both
+// directions: extending the union or removing a member breaks this line
+// until the list (and, via respondProtocol.test.ts, the protocol contract
+// in protocol/respond.json) is updated to match.
+const EVENT_TYPE_EXHAUSTIVE: { [K in RespondSseEventType]: true } = {
+  start: true,
+  delta: true,
+  thinking_delta: true,
+  final: true,
+  usage: true,
+  tool_call: true,
+  tool_result: true,
+  error: true,
+};
+
+export const RESPOND_EVENT_TYPES = Object.keys(
+  EVENT_TYPE_EXHAUSTIVE,
+) as readonly RespondSseEventType[];
+
+const KNOWN_EVENT_TYPES: ReadonlySet<string> = new Set(RESPOND_EVENT_TYPES);
 
 /**
  * Narrow an arbitrary parsed JSON value to a known SSE event. Unknown event
