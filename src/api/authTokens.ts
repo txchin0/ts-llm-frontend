@@ -13,8 +13,9 @@ import { Preferences } from '@capacitor/preferences';
  * wins over the stale local copy.
  */
 
-export const ACCESS_TOKEN_KEY = 'ts-llm.access_token';
-export const REFRESH_TOKEN_KEY = 'ts-llm.refresh_token';
+import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '../native/handshake.ts';
+
+export { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY };
 
 type AuthChangeListener = () => void;
 

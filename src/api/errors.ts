@@ -23,5 +23,24 @@ export class ApiHttpError extends Error {
   }
 }
 
-/** @deprecated Use ApiHttpError. Kept for existing imports. */
-export { ApiHttpError as RespondHttpError };
+/**
+ * The server encodes request failures as a JSON `{code, message}` body.
+ * Decodes one failed response into an ApiHttpError, preferring the server's
+ * message and falling back to the generic status-based one. This is the only
+ * place that error encoding is known.
+ */
+export async function apiErrorFromResponse(response: Response): Promise<ApiHttpError> {
+  let message: string | undefined;
+  try {
+    const body: unknown = await response.json();
+    if (typeof body === 'object' && body !== null) {
+      const { code, message: bodyMessage } = body as { code?: unknown; message?: unknown };
+      if (typeof code === 'string' && typeof bodyMessage === 'string') {
+        message = bodyMessage;
+      }
+    }
+  } catch {
+    // Non-JSON error body; the generic message carries the status.
+  }
+  return new ApiHttpError(response.status, response.statusText, message);
+}

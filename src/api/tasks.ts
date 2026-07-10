@@ -1,7 +1,6 @@
-import { getApiBaseUrl } from './config.ts';
 import { fetchJson } from './http.ts';
 
-const TASKS_PATH = '/v1/tasks';
+export const TASKS_PATH = '/v1/tasks';
 
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed';
 
@@ -32,11 +31,8 @@ export interface ListTasksOptions {
 export async function listTasks(
   options: ListTasksOptions = {},
 ): Promise<ListTasksResponse> {
-  const baseUrl = options.baseUrl ?? getApiBaseUrl();
-
-  return fetchJson<ListTasksResponse>(`${baseUrl}${TASKS_PATH}`, {
-    method: 'GET',
-    headers: { accept: 'application/json' },
+  return fetchJson<ListTasksResponse>(TASKS_PATH, {
     signal: options.signal,
+    baseUrl: options.baseUrl,
   });
 }

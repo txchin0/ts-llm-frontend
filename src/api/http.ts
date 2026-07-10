@@ -1,42 +1,43 @@
 import { authFetch } from './auth.ts';
-import { ApiHttpError } from './errors.ts';
-
-interface ValidationErrorBody {
-  code: 'validation_error';
-  message: string;
-}
-
-function isValidationErrorBody(value: unknown): value is ValidationErrorBody {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-  const body = value as { code?: unknown; message?: unknown };
-  return body.code === 'validation_error' && typeof body.message === 'string';
-}
+import { resolveApiUrl } from './config.ts';
+import { apiErrorFromResponse, ApiHttpError } from './errors.ts';
 
 /**
- * Authenticated JSON fetch: attaches the bearer token (with 401
- * refresh-and-retry via authFetch) and maps API validation errors to
- * ApiHttpError.
+ * The one authenticated JSON request path. Endpoint modules declare a path
+ * and a response shape; everything else happens here: base-URL resolution,
+ * bearer attachment with 401 refresh-and-retry (via authFetch), the server's
+ * `{code, message}` error decode, and JSON parsing.
  */
-export async function fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> {
-  const response = await authFetch(url, options);
+
+export interface ApiRequestInit extends Omit<RequestInit, 'headers' | 'body'> {
+  headers?: Record<string, string>;
+  /** Override the configured agent-server base URL (test seam). */
+  baseUrl?: string;
+  /** JSON payload; serialized with `content-type: application/json`. */
+  json?: unknown;
+}
+
+async function request(path: string, init: ApiRequestInit): Promise<Response> {
+  const { baseUrl, headers, json, ...rest } = init;
+
+  const response = await authFetch(resolveApiUrl(path, baseUrl), {
+    ...rest,
+    headers: {
+      accept: 'application/json',
+      ...(json !== undefined ? { 'content-type': 'application/json' } : {}),
+      ...headers,
+    },
+    ...(json !== undefined ? { body: JSON.stringify(json) } : {}),
+  });
 
   if (!response.ok) {
-    if (response.status === 400) {
-      try {
-        const body: unknown = await response.json();
-        if (isValidationErrorBody(body)) {
-          throw new ApiHttpError(response.status, response.statusText, body.message);
-        }
-      } catch (error) {
-        if (error instanceof ApiHttpError) {
-          throw error;
-        }
-      }
-    }
-    throw new ApiHttpError(response.status, response.statusText);
+    throw await apiErrorFromResponse(response);
   }
+  return response;
+}
+
+export async function fetchJson<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
+  const response = await request(path, init);
 
   try {
     return (await response.json()) as T;
@@ -52,4 +53,9 @@ export async function fetchJson<T>(url: string, options: RequestInit = {}): Prom
       `The agent server did not return JSON${detail}. Check that the Server URL in Settings points at the agent server.`,
     );
   }
+}
+
+/** Authenticated request whose success carries no JSON body (e.g. DELETE). */
+export async function fetchNoContent(path: string, init: ApiRequestInit = {}): Promise<void> {
+  await request(path, init);
 }

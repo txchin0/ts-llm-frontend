@@ -39,9 +39,10 @@ class AuthTokenStore(context: Context) {
     private fun read(key: String): String? =
         prefs.getString(key, null)?.trim()?.ifEmpty { null }
 
-    private companion object {
-        const val STORE = "CapacitorStorage"
-        const val KEY_ACCESS_TOKEN = "ts-llm.access_token"
-        const val KEY_REFRESH_TOKEN = "ts-llm.refresh_token"
+    companion object {
+        // Shared with the web app; contract-tested against protocol/handshake.json.
+        internal const val STORE = "CapacitorStorage"
+        internal const val KEY_ACCESS_TOKEN = "ts-llm.access_token"
+        internal const val KEY_REFRESH_TOKEN = "ts-llm.refresh_token"
     }
 }

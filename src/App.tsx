@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { Capacitor } from '@capacitor/core';
 
@@ -11,12 +11,9 @@ import { TasksPanel } from './components/TasksPanel.tsx';
 import { Transcript } from './components/Transcript.tsx';
 import { useAuth, type Auth } from './state/useAuth.ts';
 import { selectLatestAssistant, useChat } from './state/useChat.ts';
-import { useHandsFree } from './state/useHandsFree.ts';
+import { useConversationInput } from './state/useConversationInput.ts';
 import { useSettings, type Settings } from './state/useSettings.ts';
 import { useTasks } from './state/useTasks.ts';
-import { resolveMicLanguage } from './voice/speechLanguages.ts';
-import type { MicLanguagePreference } from './voice/speechLanguages.ts';
-import { useSpeechInput } from './voice/useSpeechInput.ts';
 import styles from './App.module.css';
 
 export function App() {
@@ -60,40 +57,11 @@ function ChatApp({ auth, settings }: ChatAppProps) {
     settings;
   const { messages, isStreaming, hasSession, send, stop, reset } = useChat();
 
-  const [input, setInput] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tasksExpanded, setTasksExpanded] = useState(false);
 
-  const resolvedMicLanguage = useMemo(() => resolveMicLanguage(micLanguage), [micLanguage]);
-  const handsFreeIsOpenRef = useRef(false);
-  const handleHandsFreeTranscriptRef = useRef<(text: string) => void>(() => {});
-
-  const onTranscript = useCallback((text: string) => {
-    if (handsFreeIsOpenRef.current) {
-      handleHandsFreeTranscriptRef.current(text);
-    } else {
-      setInput(text);
-    }
-  }, []);
-
-  const voice = useSpeechInput({
-    onTranscript,
-    language: resolvedMicLanguage,
-  });
-
-  const handsFree = useHandsFree({
-    send,
-    stop,
-    isStreaming,
-    isListening: voice.isListening,
-    startListening: voice.start,
-    stopListening: voice.stop,
-  });
-
-  useEffect(() => {
-    handsFreeIsOpenRef.current = handsFree.isOpen;
-    handleHandsFreeTranscriptRef.current = handsFree.handleTranscript;
-  }, [handsFree.isOpen, handsFree.handleTranscript]);
+  const conversation = useConversationInput({ send, stop, isStreaming, micLanguage });
+  const { setInput } = conversation;
 
   const latestAssistant = useMemo(() => selectLatestAssistant(messages), [messages]);
 
@@ -105,50 +73,15 @@ function ChatApp({ auth, settings }: ChatAppProps) {
     setTasksExpanded(false);
   }
 
-  const handleSubmit = useCallback(() => {
-    if (voice.isListening) voice.stop({ abort: true });
-    const text = input;
-    setInput('');
-    send(text);
-  }, [input, send, voice]);
-
   const handleNewChat = useCallback(() => {
     reset();
     setInput('');
-  }, [reset]);
+  }, [reset, setInput]);
 
   const handleLogout = useCallback(() => {
     setSettingsOpen(false);
     void auth.logout();
   }, [auth]);
-
-  const toggleVoice = useCallback(() => {
-    if (voice.isListening) {
-      voice.stop({ abort: true });
-    } else {
-      voice.clearError();
-      voice.start(input);
-    }
-  }, [input, voice]);
-
-  const handleEnterHandsFree = useCallback(() => {
-    if (voice.isListening) voice.stop({ abort: true });
-    voice.clearError();
-    handsFree.open();
-  }, [handsFree, voice]);
-
-  const handleMicLanguageChange = useCallback(
-    (next: MicLanguagePreference) => {
-      setMicLanguage(next);
-      if (voice.isListening) {
-        const base = handsFree.isOpen ? handsFree.transcript : input;
-        voice.stop({ abort: true });
-        voice.clearError();
-        voice.start(base);
-      }
-    },
-    [handsFree.isOpen, handsFree.transcript, input, setMicLanguage, voice],
-  );
 
   const hasActiveSession = hasSession || messages.length > 0;
 
@@ -181,27 +114,27 @@ function ChatApp({ auth, settings }: ChatAppProps) {
           />
         ) : null}
         <Composer
-          value={input}
+          value={conversation.input}
           onChange={setInput}
-          onSubmit={handleSubmit}
+          onSubmit={conversation.submit}
           onStop={stop}
           isStreaming={isStreaming}
-          voiceSupported={voice.supported}
-          isListening={voice.isListening}
-          voiceError={voice.error}
-          onToggleVoice={toggleVoice}
-          onEnterHandsFree={handleEnterHandsFree}
+          voiceSupported={conversation.voice.supported}
+          isListening={conversation.voice.isListening}
+          voiceError={conversation.voice.error}
+          onToggleVoice={conversation.voice.toggle}
+          onEnterHandsFree={conversation.handsFree.enter}
         />
       </main>
 
       <HandsFreeMode
-        open={handsFree.isOpen}
-        onClose={handsFree.close}
+        open={conversation.handsFree.isOpen}
+        onClose={conversation.handsFree.close}
         latest={latestAssistant}
-        transcript={handsFree.transcript}
-        micState={handsFree.micState}
-        onMicPress={handsFree.toggleMic}
-        voiceSupported={voice.supported}
+        transcript={conversation.handsFree.transcript}
+        micState={conversation.handsFree.micState}
+        onMicPress={conversation.handsFree.toggleMic}
+        voiceSupported={conversation.voice.supported}
       />
 
       <SettingsDialog
@@ -218,7 +151,7 @@ function ChatApp({ auth, settings }: ChatAppProps) {
         showToolCalls={showToolCalls}
         onShowToolCallsChange={setShowToolCalls}
         micLanguage={micLanguage}
-        onMicLanguageChange={handleMicLanguageChange}
+        onMicLanguageChange={setMicLanguage}
         onClose={() => setSettingsOpen(false)}
       />
     </div>

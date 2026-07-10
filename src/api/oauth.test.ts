@@ -89,7 +89,7 @@ describe('disconnectOAuth', () => {
       ),
     );
 
-    await expect(disconnectOAuth('google', 'user-1')).resolves.toBeUndefined();
+    await expect(disconnectOAuth('google')).resolves.toBeUndefined();
   });
 
   it('throws ApiHttpError with OAuth error message on 400', async () => {
@@ -105,7 +105,7 @@ describe('disconnectOAuth', () => {
       ),
     );
 
-    await expect(disconnectOAuth('google', 'user-1')).rejects.toEqual(
+    await expect(disconnectOAuth('google')).rejects.toEqual(
       expect.objectContaining<Partial<ApiHttpError>>({ message: 'Not connected' }),
     );
   });

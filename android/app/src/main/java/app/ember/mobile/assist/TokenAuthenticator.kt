@@ -58,7 +58,7 @@ class TokenAuthenticator(
         val body = JSONObject().put("refresh_token", refreshToken).toString()
             .toRequestBody("application/json".toMediaType())
         val request = Request.Builder()
-            .url("$baseUrl/v1/auth/refresh")
+            .url("$baseUrl$REFRESH_PATH")
             .post(body)
             .build()
         return try {
@@ -101,7 +101,9 @@ class TokenAuthenticator(
         return count
     }
 
-    private companion object {
-        const val TAG = "EmberAssist"
+    companion object {
+        /** Contract-tested against protocol/respond.json (endpoints.authRefresh). */
+        internal const val REFRESH_PATH = "/v1/auth/refresh"
+        private const val TAG = "EmberAssist"
     }
 }
