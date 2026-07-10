@@ -8,8 +8,12 @@
     "authLogout": "/v1/auth/logout",
     "tasks": "/v1/tasks",
     "integrations": "/v1/integrations",
-    "oauthConnectToken": "/v1/oauth/connect-token"
+    "oauthConnectToken": "/v1/oauth/connect-token",
+    "oauthStatus": "/v1/oauth/{provider_id}/status",
+    "oauthStart": "/v1/oauth/{provider_id}/start",
+    "oauthDisconnect": "/v1/oauth/{provider_id}"
   },
+  "oauthProviderSample": "google",
   "respondAccept": "text/event-stream",
   "request": {
     "message": "What's on my calendar today?",

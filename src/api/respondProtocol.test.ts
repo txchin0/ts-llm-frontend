@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { AUTH_PATH_PREFIX } from './auth.ts';
 import { RESPOND_PATH } from './client.ts';
 import { INTEGRATIONS_PATH } from './integrations.ts';
-import { OAUTH_CONNECT_TOKEN_PATH } from './oauth.ts';
+import { OAUTH_CONNECT_TOKEN_PATH, OAUTH_DISCONNECT_PATH, OAUTH_START_PATH, OAUTH_STATUS_PATH } from './oauth.ts';
 import { parseSseFrames } from './sse.ts';
 import { TASKS_PATH } from './tasks.ts';
 import { isRespondSseEvent, RESPOND_EVENT_TYPES } from './types.ts';
@@ -34,10 +34,15 @@ describe('respond protocol contract', () => {
     expect(contract.endpoints.tasks).toBe(TASKS_PATH);
     expect(contract.endpoints.integrations).toBe(INTEGRATIONS_PATH);
     expect(contract.endpoints.oauthConnectToken).toBe(OAUTH_CONNECT_TOKEN_PATH);
+    expect(contract.endpoints.oauthStatus).toBe(OAUTH_STATUS_PATH);
+    expect(contract.endpoints.oauthStart).toBe(OAUTH_START_PATH);
+    expect(contract.endpoints.oauthDisconnect).toBe(OAUTH_DISCONNECT_PATH);
     expect(contract.endpoints.authRegister).toBe(`${AUTH_PATH_PREFIX}/register`);
     expect(contract.endpoints.authLogin).toBe(`${AUTH_PATH_PREFIX}/login`);
     expect(contract.endpoints.authRefresh).toBe(`${AUTH_PATH_PREFIX}/refresh`);
     expect(contract.endpoints.authLogout).toBe(`${AUTH_PATH_PREFIX}/logout`);
+    expect(typeof contract.oauthProviderSample).toBe('string');
+    expect(contract.oauthProviderSample.length).toBeGreaterThan(0);
   });
 
   it('parses the canonical wire stream back to the canonical events', async () => {

@@ -105,13 +105,17 @@ class RespondClient(private val baseUrl: String, private val tokens: AuthTokenSt
     }
 
     private fun dispatch(payload: String, callbacks: Callbacks) {
-        when (val event = RespondEvent.parse(payload)) {
-            is RespondEvent.SessionStarted -> post { callbacks.onSessionStarted(event.sessionId) }
-            is RespondEvent.Delta -> post { callbacks.onDelta(event.text) }
-            is RespondEvent.ToolActivity -> post { callbacks.onToolActivity(event.toolName) }
-            RespondEvent.Final -> post { callbacks.onFinal() }
-            is RespondEvent.Error -> post { callbacks.onError(event.message) }
-            null -> Unit // blank/unparseable, or an event the overlay doesn't render
+        when (val result = RespondEvent.parse(payload)) {
+            is RespondParseResult.Rendered -> when (val event = result.event) {
+                is RespondEvent.SessionStarted -> post { callbacks.onSessionStarted(event.sessionId) }
+                is RespondEvent.Delta -> post { callbacks.onDelta(event.text) }
+                is RespondEvent.ToolActivity -> post { callbacks.onToolActivity(event.toolName) }
+                RespondEvent.Final -> post { callbacks.onFinal() }
+                is RespondEvent.Error -> post { callbacks.onError(event.message) }
+            }
+            RespondParseResult.Ignored -> Unit
+            is RespondParseResult.Malformed ->
+                Log.w(TAG, "malformed SSE payload (${result.detail}): ${payload.take(120)}")
         }
     }
 
