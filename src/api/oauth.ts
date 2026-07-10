@@ -1,6 +1,19 @@
 import { resolveApiUrl } from './config.ts';
+import {
+  OAUTH_CONNECT_TOKEN_PATH,
+  OAUTH_DISCONNECT_PATH,
+  OAUTH_START_PATH,
+  OAUTH_STATUS_PATH,
+} from './endpoints.ts';
 import { ApiHttpError } from './errors.ts';
 import { fetchJson, fetchNoContent } from './http.ts';
+
+export {
+  OAUTH_CONNECT_TOKEN_PATH,
+  OAUTH_DISCONNECT_PATH,
+  OAUTH_START_PATH,
+  OAUTH_STATUS_PATH,
+} from './endpoints.ts';
 
 export interface OAuthStatusResponse {
   connected: boolean;
@@ -13,27 +26,8 @@ export interface OAuthRequestOptions {
   baseUrl?: string;
 }
 
-export const OAUTH_CONNECT_TOKEN_PATH = '/v1/oauth/connect-token';
-
-/** Path templates pinned by protocol/respond.json; `{provider_id}` is substituted. */
-export const OAUTH_STATUS_PATH = '/v1/oauth/{provider_id}/status';
-export const OAUTH_START_PATH = '/v1/oauth/{provider_id}/start';
-export const OAUTH_DISCONNECT_PATH = '/v1/oauth/{provider_id}';
-
 function fillOAuthPath(template: string, providerId: string): string {
   return template.replace('{provider_id}', encodeURIComponent(providerId));
-}
-
-function oauthStatusPath(providerId: string): string {
-  return fillOAuthPath(OAUTH_STATUS_PATH, providerId);
-}
-
-function oauthStartPath(providerId: string): string {
-  return fillOAuthPath(OAUTH_START_PATH, providerId);
-}
-
-function oauthDisconnectPath(providerId: string): string {
-  return fillOAuthPath(OAUTH_DISCONNECT_PATH, providerId);
 }
 
 interface ConnectTokenResponse {
@@ -64,7 +58,10 @@ export function buildOAuthStartUrl(
   baseUrl?: string,
 ): string {
   const params = new URLSearchParams({ connect_token: connectToken });
-  return resolveApiUrl(`${oauthStartPath(providerId)}?${params}`, baseUrl);
+  return resolveApiUrl(
+    `${fillOAuthPath(OAUTH_START_PATH, providerId)}?${params}`,
+    baseUrl,
+  );
 }
 
 /** Reports OAuth connection state and scope coverage for the authenticated user. */
@@ -72,7 +69,7 @@ export async function getOAuthStatus(
   providerId: string,
   options: OAuthRequestOptions = {},
 ): Promise<OAuthStatusResponse> {
-  return fetchJson<OAuthStatusResponse>(oauthStatusPath(providerId), {
+  return fetchJson<OAuthStatusResponse>(fillOAuthPath(OAUTH_STATUS_PATH, providerId), {
     signal: options.signal,
     baseUrl: options.baseUrl,
   });
@@ -83,7 +80,7 @@ export async function disconnectOAuth(
   providerId: string,
   options: OAuthRequestOptions = {},
 ): Promise<void> {
-  await fetchNoContent(oauthDisconnectPath(providerId), {
+  await fetchNoContent(fillOAuthPath(OAUTH_DISCONNECT_PATH, providerId), {
     method: 'DELETE',
     signal: options.signal,
     baseUrl: options.baseUrl,

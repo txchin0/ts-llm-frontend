@@ -51,9 +51,10 @@ _Avoid_: API, backend (unqualified)
 The SSE event sequence (`start` … `final`/`error`) answering one turn.
 
 **Protocol contract**:
-The canonical fixtures in `protocol/` that every spelling of the wire protocol
-and the native handshake is verified against — the TypeScript client, the
-Kotlin assistant, and the mock server are adapters of it.
+The canonical fixtures in `protocol/` (`endpoints.json`, `respond.json`,
+`handshake.json`) that every spelling of the wire protocol and the native
+handshake is verified against — the TypeScript client imports endpoint paths
+at runtime, while the Kotlin assistant and mock server adapt the same files.
 
 **Native handshake**:
 The storage names and server-URL normalization rules the web app and the

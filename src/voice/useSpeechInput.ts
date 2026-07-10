@@ -16,6 +16,11 @@ export interface UseSpeechInputOptions {
   onTranscript: (text: string) => void;
   /** BCP 47 language tag for recognition (e.g. `en-US`). */
   language: string;
+  /**
+   * Current full dictation text to keep when restarting after a language
+   * change mid-session. Defaults to the base passed to the last `start`.
+   */
+  getDictationBase?: () => string;
 }
 
 export interface SpeechInput {
@@ -34,9 +39,14 @@ export interface SpeechInput {
  * android.speech.SpeechRecognizer (via Capacitor plugin) in the native app.
  * Recognized speech is appended to whatever text was already in the composer
  * and pushed back via `onTranscript`; it never auto-sends. Degrades to
- * `supported: false` where no engine is available.
+ * `supported: false` where no engine is available. When `language` changes
+ * while listening, restarts in place with `getDictationBase()`.
  */
-export function useSpeechInput({ onTranscript, language }: UseSpeechInputOptions): SpeechInput {
+export function useSpeechInput({
+  onTranscript,
+  language,
+  getDictationBase,
+}: UseSpeechInputOptions): SpeechInput {
   const [engine] = useState<SpeechInputEngine>(createSpeechEngine);
 
   const [supported, setSupported] = useState<boolean>(() => engine.isAvailableSync?.() ?? true);
@@ -46,12 +56,15 @@ export function useSpeechInput({ onTranscript, language }: UseSpeechInputOptions
   const baseTextRef = useRef('');
   const onTranscriptRef = useRef(onTranscript);
   const languageRef = useRef(language);
+  const getDictationBaseRef = useRef(getDictationBase);
+  const isListeningRef = useRef(false);
   useEffect(() => {
     onTranscriptRef.current = onTranscript;
+    getDictationBaseRef.current = getDictationBase;
   });
   useEffect(() => {
-    languageRef.current = language;
-  });
+    isListeningRef.current = isListening;
+  }, [isListening]);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +113,18 @@ export function useSpeechInput({ onTranscript, language }: UseSpeechInputOptions
     },
     [engine],
   );
+
+  // Restart in place when the recognition language changes mid-session.
+  useEffect(() => {
+    if (languageRef.current === language) return;
+    languageRef.current = language;
+    if (!isListeningRef.current) return;
+
+    const base = getDictationBaseRef.current?.() ?? baseTextRef.current.trimEnd();
+    stop({ abort: true });
+    clearError();
+    start(base);
+  }, [language, stop, clearError, start]);
 
   useEffect(() => {
     return () => {

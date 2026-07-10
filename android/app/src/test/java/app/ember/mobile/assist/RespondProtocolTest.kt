@@ -7,26 +7,32 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Verifies the Kotlin spelling of the Respond protocol against the
- * cross-language contract in protocol/respond.json (on the test classpath via
- * build.gradle). The web client checks the same fixture in
+ * Verifies the Kotlin spelling of the Respond protocol against
+ * protocol/respond.json and protocol/endpoints.json (on the test classpath via
+ * build.gradle). The web client checks the same fixtures in
  * src/api/respondProtocol.test.ts, so a protocol change that skips this side
  * fails here instead of silently deafening the assistant overlay.
  */
 class RespondProtocolTest {
 
-    private val contract: JSONObject by lazy {
+    private val respond: JSONObject by lazy {
         val text = checkNotNull(javaClass.classLoader?.getResourceAsStream("respond.json")) {
             "protocol/respond.json not on the test classpath; see build.gradle sourceSets"
         }.bufferedReader().readText()
         JSONObject(text)
     }
 
-    private fun event(name: String): JSONObject = contract.getJSONObject("events").getJSONObject(name)
+    private val endpoints: JSONObject by lazy {
+        val text = checkNotNull(javaClass.classLoader?.getResourceAsStream("endpoints.json")) {
+            "protocol/endpoints.json not on the test classpath; see build.gradle sourceSets"
+        }.bufferedReader().readText()
+        JSONObject(text)
+    }
+
+    private fun event(name: String): JSONObject = respond.getJSONObject("events").getJSONObject(name)
 
     @Test
     fun `endpoint paths match the contract`() {
-        val endpoints = contract.getJSONObject("endpoints")
         assertEquals(endpoints.getString("respond"), RespondClient.RESPOND_PATH)
         assertEquals(endpoints.getString("authRefresh"), TokenAuthenticator.REFRESH_PATH)
     }
@@ -78,7 +84,7 @@ class RespondProtocolTest {
 
     @Test
     fun `accumulates the canonical wire stream back to the canonical events`() {
-        val rawLines = contract.getJSONArray("rawStreamLines")
+        val rawLines = respond.getJSONArray("rawStreamLines")
         val accumulator = SseDataAccumulator()
         val payloads = mutableListOf<String>()
         for (i in 0 until rawLines.length()) {
@@ -86,7 +92,7 @@ class RespondProtocolTest {
         }
         accumulator.flush()?.let { payloads.add(it) }
 
-        val expectedNames = contract.getJSONArray("stream")
+        val expectedNames = respond.getJSONArray("stream")
         assertEquals(expectedNames.length(), payloads.size)
         for (i in 0 until expectedNames.length()) {
             val expected = event(expectedNames.getString(i))
@@ -112,13 +118,18 @@ class RespondProtocolTest {
 
     @Test
     fun `auth refresh exchange shapes match what TokenAuthenticator sends and reads`() {
-        // TokenAuthenticator builds {refresh_token} and reads access_token/refresh_token.
-        val refreshRequest = contract.getJSONObject("authRefreshRequest")
-        assertTrue(refreshRequest.has("refresh_token"))
+        val refreshRequest = endpoints.getJSONObject("authRefreshRequest")
+        assertEquals(setOf("refresh_token"), refreshRequest.keys().asSequence().toSet())
+        assertTrue(refreshRequest.getString("refresh_token").isNotEmpty())
 
-        val tokensResponse = contract.getJSONObject("authTokensResponse")
+        val tokensResponse = endpoints.getJSONObject("authTokensResponse")
+        assertEquals(
+            setOf("user_id", "token_type", "access_token", "expires_in", "refresh_token"),
+            tokensResponse.keys().asSequence().toSet(),
+        )
         assertTrue(tokensResponse.getString("access_token").isNotEmpty())
         assertTrue(tokensResponse.getString("refresh_token").isNotEmpty())
         assertEquals("Bearer", tokensResponse.getString("token_type"))
+        assertTrue(tokensResponse.getInt("expires_in") > 0)
     }
 }

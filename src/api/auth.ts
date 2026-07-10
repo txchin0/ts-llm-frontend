@@ -7,8 +7,15 @@ import {
   getRefreshToken,
   setAuthTokens,
 } from './authTokens.ts';
-import { resolveApiUrl } from './config.ts';
-import { apiErrorFromResponse, ApiHttpError } from './errors.ts';
+import {
+  AUTH_LOGIN_PATH,
+  AUTH_LOGOUT_PATH,
+  AUTH_PATH_PREFIX,
+  AUTH_REFRESH_PATH,
+  AUTH_REGISTER_PATH,
+} from './endpoints.ts';
+import { ApiHttpError } from './errors.ts';
+import { fetchJsonPublic } from './publicHttp.ts';
 
 /**
  * Auth endpoints plus the shared authenticated fetch. `authFetch` is the one
@@ -24,26 +31,11 @@ export interface AuthTokensResponse {
   refresh_token: string;
 }
 
-export const AUTH_PATH_PREFIX = '/v1/auth';
-
-/** POSTs to an auth endpoint (no bearer, no retry) and returns parsed JSON. */
-async function postAuth<T>(path: string, payload: unknown): Promise<T> {
-  const response = await fetch(resolveApiUrl(`${AUTH_PATH_PREFIX}/${path}`), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', accept: 'application/json' },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    throw await apiErrorFromResponse(response);
-  }
-
-  return (await response.json()) as T;
-}
+export { AUTH_PATH_PREFIX };
 
 /** Creates an account and stores the returned session. */
 export async function register(userId: string, password: string): Promise<AuthTokensResponse> {
-  const tokens = await postAuth<AuthTokensResponse>('register', {
+  const tokens = await fetchJsonPublic<AuthTokensResponse>(AUTH_REGISTER_PATH, {
     user_id: userId,
     password,
   });
@@ -53,7 +45,7 @@ export async function register(userId: string, password: string): Promise<AuthTo
 
 /** Logs in and stores the returned session. */
 export async function login(userId: string, password: string): Promise<AuthTokensResponse> {
-  const tokens = await postAuth<AuthTokensResponse>('login', {
+  const tokens = await fetchJsonPublic<AuthTokensResponse>(AUTH_LOGIN_PATH, {
     user_id: userId,
     password,
   });
@@ -69,7 +61,9 @@ export async function logout(): Promise<void> {
     return;
   }
   try {
-    await postAuth<void>('logout', { refresh_token: refreshToken });
+    await fetchJsonPublic<Record<string, never>>(AUTH_LOGOUT_PATH, {
+      refresh_token: refreshToken,
+    });
   } catch {
     // Local session is already cleared; server-side revocation failing
     // (offline, already revoked) should not block signing out.
@@ -102,7 +96,7 @@ async function runRefresh(): Promise<boolean> {
     if (refreshToken === null) {
       return false;
     }
-    const tokens = await postAuth<AuthTokensResponse>('refresh', {
+    const tokens = await fetchJsonPublic<AuthTokensResponse>(AUTH_REFRESH_PATH, {
       refresh_token: refreshToken,
     });
     setAuthTokens(tokens.access_token, tokens.refresh_token);

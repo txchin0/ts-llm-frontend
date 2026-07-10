@@ -1,6 +1,7 @@
+import { INTEGRATIONS_PATH } from './endpoints.ts';
 import { fetchJson } from './http.ts';
 
-export const INTEGRATIONS_PATH = '/v1/integrations';
+export { INTEGRATIONS_PATH } from './endpoints.ts';
 
 export interface IntegrationSummary {
   id: string;

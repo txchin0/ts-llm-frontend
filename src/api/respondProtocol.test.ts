@@ -1,21 +1,30 @@
-// Verifies the TypeScript spelling of the Respond protocol against the
-// cross-language contract in protocol/respond.json. The Kotlin assistant runs
-// the same fixtures through its parser (RespondProtocolTest.kt), and
-// mock-server.mjs serves them — so a protocol change that skips one side
-// fails a test instead of drifting silently.
+// Verifies the TypeScript spelling of the Respond protocol against
+// protocol/respond.json and protocol/endpoints.json. The Kotlin assistant runs
+// the same fixtures (RespondProtocolTest.kt); mock-server.mjs serves them.
 import { describe, expect, it } from 'vitest';
 
-import { AUTH_PATH_PREFIX } from './auth.ts';
-import { RESPOND_PATH } from './client.ts';
-import { INTEGRATIONS_PATH } from './integrations.ts';
-import { OAUTH_CONNECT_TOKEN_PATH, OAUTH_DISCONNECT_PATH, OAUTH_START_PATH, OAUTH_STATUS_PATH } from './oauth.ts';
+import {
+  AUTH_LOGIN_PATH,
+  AUTH_LOGOUT_PATH,
+  AUTH_PATH_PREFIX,
+  AUTH_REFRESH_PATH,
+  AUTH_REGISTER_PATH,
+  INTEGRATIONS_PATH,
+  OAUTH_CONNECT_TOKEN_PATH,
+  OAUTH_DISCONNECT_PATH,
+  OAUTH_PROVIDER_SAMPLE,
+  OAUTH_START_PATH,
+  OAUTH_STATUS_PATH,
+  RESPOND_PATH,
+  TASKS_PATH,
+} from './endpoints.ts';
 import { parseSseFrames } from './sse.ts';
-import { TASKS_PATH } from './tasks.ts';
 import { isRespondSseEvent, RESPOND_EVENT_TYPES } from './types.ts';
 import type { RespondSseEvent } from './types.ts';
 import { applyRespondEvent } from '../state/chatStreamReducer.ts';
 import type { AssistantMessage } from '../state/types.ts';
 import { collectAsync, sseStream } from '../test/helpers.ts';
+import endpoints from '../../protocol/endpoints.json';
 import contract from '../../protocol/respond.json';
 
 describe('respond protocol contract', () => {
@@ -23,26 +32,30 @@ describe('respond protocol contract', () => {
     expect(Object.keys(contract.events).sort()).toEqual([...RESPOND_EVENT_TYPES].sort());
   });
 
-  it('accepts every canonical event sample', () => {
+  it('accepts every canonical event sample with required fields', () => {
     for (const [type, sample] of Object.entries(contract.events)) {
       expect(isRespondSseEvent(sample), `events.${type}`).toBe(true);
     }
+    // Type alone is not enough — shape must match the contract.
+    expect(isRespondSseEvent({ type: 'delta' })).toBe(false);
+    expect(isRespondSseEvent({ type: 'start' })).toBe(false);
   });
 
-  it('pins the endpoint paths', () => {
-    expect(contract.endpoints.respond).toBe(RESPOND_PATH);
-    expect(contract.endpoints.tasks).toBe(TASKS_PATH);
-    expect(contract.endpoints.integrations).toBe(INTEGRATIONS_PATH);
-    expect(contract.endpoints.oauthConnectToken).toBe(OAUTH_CONNECT_TOKEN_PATH);
-    expect(contract.endpoints.oauthStatus).toBe(OAUTH_STATUS_PATH);
-    expect(contract.endpoints.oauthStart).toBe(OAUTH_START_PATH);
-    expect(contract.endpoints.oauthDisconnect).toBe(OAUTH_DISCONNECT_PATH);
-    expect(contract.endpoints.authRegister).toBe(`${AUTH_PATH_PREFIX}/register`);
-    expect(contract.endpoints.authLogin).toBe(`${AUTH_PATH_PREFIX}/login`);
-    expect(contract.endpoints.authRefresh).toBe(`${AUTH_PATH_PREFIX}/refresh`);
-    expect(contract.endpoints.authLogout).toBe(`${AUTH_PATH_PREFIX}/logout`);
-    expect(typeof contract.oauthProviderSample).toBe('string');
-    expect(contract.oauthProviderSample.length).toBeGreaterThan(0);
+  it('derives runtime path constants from endpoints.json', () => {
+    expect(RESPOND_PATH).toBe(endpoints.respond);
+    expect(TASKS_PATH).toBe(endpoints.tasks);
+    expect(INTEGRATIONS_PATH).toBe(endpoints.integrations);
+    expect(OAUTH_CONNECT_TOKEN_PATH).toBe(endpoints.oauthConnectToken);
+    expect(OAUTH_STATUS_PATH).toBe(endpoints.oauthStatus);
+    expect(OAUTH_START_PATH).toBe(endpoints.oauthStart);
+    expect(OAUTH_DISCONNECT_PATH).toBe(endpoints.oauthDisconnect);
+    expect(AUTH_REGISTER_PATH).toBe(endpoints.authRegister);
+    expect(AUTH_LOGIN_PATH).toBe(endpoints.authLogin);
+    expect(AUTH_REFRESH_PATH).toBe(endpoints.authRefresh);
+    expect(AUTH_LOGOUT_PATH).toBe(endpoints.authLogout);
+    expect(AUTH_PATH_PREFIX).toBe('/v1/auth');
+    expect(OAUTH_PROVIDER_SAMPLE).toBe(endpoints.oauthProviderSample);
+    expect(OAUTH_PROVIDER_SAMPLE.length).toBeGreaterThan(0);
   });
 
   it('parses the canonical wire stream back to the canonical events', async () => {
@@ -90,10 +103,21 @@ describe('respond protocol contract', () => {
     expect(typeof contract.request.show_thinking).toBe('boolean');
   });
 
-  it('carries the auth refresh exchange the native client re-implements', () => {
-    expect(typeof contract.authRefreshRequest.refresh_token).toBe('string');
-    expect(typeof contract.authTokensResponse.access_token).toBe('string');
-    expect(typeof contract.authTokensResponse.refresh_token).toBe('string');
-    expect(contract.authTokensResponse.token_type).toBe('Bearer');
+  it('carries the auth refresh exchange TokenAuthenticator sends and reads', () => {
+    expect(Object.keys(endpoints.authRefreshRequest)).toEqual(['refresh_token']);
+    expect(endpoints.authRefreshRequest.refresh_token.length).toBeGreaterThan(0);
+
+    expect(endpoints.authTokensResponse).toMatchObject({
+      user_id: expect.any(String),
+      token_type: 'Bearer',
+      access_token: expect.any(String),
+      expires_in: expect.any(Number),
+      refresh_token: expect.any(String),
+    });
+    expect(Object.keys(endpoints.authTokensResponse).sort()).toEqual(
+      ['access_token', 'expires_in', 'refresh_token', 'token_type', 'user_id'].sort(),
+    );
+    expect(endpoints.authTokensResponse.access_token.length).toBeGreaterThan(0);
+    expect(endpoints.authTokensResponse.refresh_token.length).toBeGreaterThan(0);
   });
 });

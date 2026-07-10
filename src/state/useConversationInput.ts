@@ -43,7 +43,7 @@ export interface ConversationInput {
  * composer draft, dictation (behind the speech-engine seam), and the
  * hands-free overlay. Owns the routing rule — dictation lands in the
  * hands-free transcript while the overlay is open, in the composer draft
- * otherwise — and restarts dictation in place when the mic language changes.
+ * otherwise. Language mid-session restarts are owned by `useSpeechInput`.
  */
 export function useConversationInput({
   send,
@@ -59,6 +59,8 @@ export function useConversationInput({
   // callback and hands-free needs the speech controls — refs break the cycle.
   const handsFreeIsOpenRef = useRef(false);
   const handsFreeTranscriptRef = useRef<(text: string) => void>(() => {});
+  const inputRef = useRef(input);
+  const handsFreeTextRef = useRef('');
 
   const onTranscript = useCallback((text: string) => {
     if (handsFreeIsOpenRef.current) {
@@ -68,7 +70,16 @@ export function useConversationInput({
     }
   }, []);
 
-  const voice = useSpeechInput({ onTranscript, language: resolvedLanguage });
+  const getDictationBase = useCallback(
+    () => (handsFreeIsOpenRef.current ? handsFreeTextRef.current : inputRef.current),
+    [],
+  );
+
+  const voice = useSpeechInput({
+    onTranscript,
+    language: resolvedLanguage,
+    getDictationBase,
+  });
 
   const handsFree = useHandsFree({
     send,
@@ -82,46 +93,9 @@ export function useConversationInput({
   useEffect(() => {
     handsFreeIsOpenRef.current = handsFree.isOpen;
     handsFreeTranscriptRef.current = handsFree.handleTranscript;
-  }, [handsFree.isOpen, handsFree.handleTranscript]);
-
-  // Fresh draft/transcript/listening for language restart without re-firing
-  // the effect when those values change — only resolvedLanguage is the trigger.
-  const languageRestartRef = useRef({
-    input,
-    transcript: handsFree.transcript,
-    isListening: voice.isListening,
-    isOpen: handsFree.isOpen,
-    stop: voice.stop,
-    clearError: voice.clearError,
-    start: voice.start,
-  });
-  languageRestartRef.current = {
-    input,
-    transcript: handsFree.transcript,
-    isListening: voice.isListening,
-    isOpen: handsFree.isOpen,
-    stop: voice.stop,
-    clearError: voice.clearError,
-    start: voice.start,
-  };
-
-  // Restart dictation in place when the language changes mid-session, keeping
-  // whatever text the user already produced as the base. Skip the initial
-  // mount; the ref also collapses Strict Mode's double-invoke into one restart.
-  const prevLanguageRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (prevLanguageRef.current === resolvedLanguage) return;
-    const previous = prevLanguageRef.current;
-    prevLanguageRef.current = resolvedLanguage;
-    if (previous === null) return;
-
-    const ctx = languageRestartRef.current;
-    if (!ctx.isListening) return;
-    const base = ctx.isOpen ? ctx.transcript : ctx.input;
-    ctx.stop({ abort: true });
-    ctx.clearError();
-    ctx.start(base);
-  }, [resolvedLanguage]);
+    inputRef.current = input;
+    handsFreeTextRef.current = handsFree.transcript;
+  }, [handsFree.isOpen, handsFree.handleTranscript, handsFree.transcript, input]);
 
   const submit = useCallback(() => {
     if (voice.isListening) voice.stop({ abort: true });

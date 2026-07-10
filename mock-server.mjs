@@ -1,7 +1,7 @@
-// Mock of the ts-llm agent server, driven by the protocol contract in
-// protocol/respond.json: endpoint paths and event shapes come from the
-// fixtures (with fresh ids/timestamps per turn), so the mock cannot drift
-// from the vocabulary the real clients are tested against.
+// Mock of the ts-llm agent server, driven by protocol/endpoints.json (routes)
+// and protocol/respond.json (SSE event samples). Fresh ids/timestamps are
+// applied per turn so the mock cannot drift from the vocabulary the real
+// clients are tested against.
 //
 // Speaks the real auth model: password register/login issuing bearer token
 // pairs, refresh rotation, and 401s for missing/expired tokens. Accounts and
@@ -14,10 +14,13 @@
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 
-const contract = JSON.parse(
+const endpoints = JSON.parse(
+  readFileSync(new URL('./protocol/endpoints.json', import.meta.url), 'utf8'),
+);
+const respondContract = JSON.parse(
   readFileSync(new URL('./protocol/respond.json', import.meta.url), 'utf8'),
 );
-const { endpoints, events } = contract;
+const { events } = respondContract;
 
 const PORT = Number(process.env.MOCK_PORT ?? 3001);
 
@@ -141,6 +144,13 @@ function readJsonBody(req) {
   });
 }
 
+function readCredentials(body) {
+  return {
+    userId: typeof body.user_id === 'string' ? body.user_id.trim() : '',
+    password: typeof body.password === 'string' ? body.password : '',
+  };
+}
+
 function sendJson(res, statusCode, body) {
   res.writeHead(statusCode, {
     'content-type': 'application/json; charset=utf-8',
@@ -155,8 +165,7 @@ function sendJson(res, statusCode, body) {
 
 async function handleRegister(req, res) {
   const body = await readJsonBody(req);
-  const userId = typeof body.user_id === 'string' ? body.user_id.trim() : '';
-  const password = typeof body.password === 'string' ? body.password : '';
+  const { userId, password } = readCredentials(body);
   if (!userId || !password) {
     sendJson(res, 400, { code: 'validation_error', message: 'user_id and password are required.' });
     return;
@@ -171,8 +180,7 @@ async function handleRegister(req, res) {
 
 async function handleLogin(req, res) {
   const body = await readJsonBody(req);
-  const userId = typeof body.user_id === 'string' ? body.user_id.trim() : '';
-  const password = typeof body.password === 'string' ? body.password : '';
+  const { userId, password } = readCredentials(body);
   const account = accounts.get(userId);
   if (!account || account.password !== password) {
     sendJson(res, 401, { code: 'invalid_credentials', message: 'Wrong user id or password.' });
@@ -387,7 +395,7 @@ async function handleRespond(req, res) {
 // Router
 // ---------------------------------------------------------------------------
 
-const oauthProvider = contract.oauthProviderSample;
+const oauthProvider = endpoints.oauthProviderSample;
 const fillOAuthPath = (template) => template.replace('{provider_id}', oauthProvider);
 
 const routes = new Map([

@@ -18,7 +18,8 @@ import org.json.JSONObject
  * Streams a chat turn from the ts-llm agent server: POST /v1/respond with an
  * SSE response. Wire knowledge lives behind [SseDataAccumulator] (frame
  * grammar) and [RespondEvent.parse] (event vocabulary), both contract-tested
- * against protocol/respond.json alongside the web client. Only the events the
+ * against protocol/respond.json and protocol/endpoints.json alongside the web
+ * client. Only the events the
  * overlay renders are surfaced; thinking/usage/tool_result are ignored. All
  * callbacks are delivered on the main thread.
  *
@@ -124,7 +125,7 @@ class RespondClient(private val baseUrl: String, private val tokens: AuthTokenSt
     }
 
     companion object {
-        /** Contract-tested against protocol/respond.json (endpoints.respond). */
+        /** Contract-tested against protocol/endpoints.json (respond). */
         internal const val RESPOND_PATH = "/v1/respond"
         private const val TAG = "EmberAssist"
     }

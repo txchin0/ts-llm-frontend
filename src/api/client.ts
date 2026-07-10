@@ -1,5 +1,6 @@
 import { authFetch } from './auth.ts';
 import { resolveApiUrl } from './config.ts';
+import { RESPOND_PATH } from './endpoints.ts';
 import { apiErrorFromResponse } from './errors.ts';
 import { parseSseFrames } from './sse.ts';
 import {
@@ -9,8 +10,7 @@ import {
 } from './types.ts';
 
 export { ApiHttpError } from './errors.ts';
-
-export const RESPOND_PATH = '/v1/respond';
+export { RESPOND_PATH } from './endpoints.ts';
 
 export interface RespondUnknownEvent {
   type: 'unknown';
