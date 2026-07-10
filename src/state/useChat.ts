@@ -11,10 +11,6 @@ function createId(): string {
   return `id-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export interface UseChatOptions {
-  userId: string;
-}
-
 export interface UseChat {
   messages: ChatMessage[];
   isStreaming: boolean;
@@ -30,7 +26,7 @@ export function selectLatestAssistant(
   return messages.findLast((message): message is AssistantMessage => message.role === 'assistant');
 }
 
-export function useChat({ userId }: UseChatOptions): UseChat {
+export function useChat(): UseChat {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [hasSession, setHasSession] = useState(false);
@@ -93,7 +89,6 @@ export function useChat({ userId }: UseChatOptions): UseChat {
         try {
           const stream = respondStream(
             {
-              user_id: userId,
               message: trimmed,
               show_thinking: true,
               ...(sessionIdRef.current ? { session_id: sessionIdRef.current } : {}),
@@ -139,7 +134,7 @@ export function useChat({ userId }: UseChatOptions): UseChat {
         }
       })();
     },
-    [isStreaming, patchAssistant, userId],
+    [isStreaming, patchAssistant],
   );
 
   return { messages, isStreaming, hasSession, send, stop, reset };

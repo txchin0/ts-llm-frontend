@@ -12,7 +12,6 @@ import { OAuthIntegrationActions } from './OAuthIntegrationActions.tsx';
 import styles from './IntegrationsSection.module.css';
 
 interface IntegrationsSectionProps {
-  userId: string;
   hasActiveSession: boolean;
   open: boolean;
 }
@@ -72,7 +71,7 @@ function SkeletonRows() {
   );
 }
 
-export function IntegrationsSection({ userId, hasActiveSession, open }: IntegrationsSectionProps) {
+export function IntegrationsSection({ hasActiveSession, open }: IntegrationsSectionProps) {
   const sectionId = useId();
   const abortRef = useRef<AbortController | null>(null);
   const itemsRef = useRef<IntegrationSummary[]>([]);
@@ -91,7 +90,7 @@ export function IntegrationsSection({ userId, hasActiveSession, open }: Integrat
     connect,
     disconnect,
     afterSave,
-  } = useOAuthIntegrations({ userId, active: open, items });
+  } = useOAuthIntegrations({ active: open, items });
   const displayError = error ?? oauthError;
 
   const hasChanges = useMemo(() => draftHasChanges(draft, items), [draft, items]);
@@ -118,7 +117,7 @@ export function IntegrationsSection({ userId, hasActiveSession, open }: Integrat
       try {
         setError(null);
         clearOAuthError();
-        const response = await listIntegrations(userId, { signal });
+        const response = await listIntegrations({ signal });
         if (signal.aborted) {
           return;
         }
@@ -135,7 +134,7 @@ export function IntegrationsSection({ userId, hasActiveSession, open }: Integrat
         }
       }
     })();
-  }, [clearOAuthError, userId]);
+  }, [clearOAuthError]);
 
   const load = useCallback(() => {
     abortRef.current?.abort();
@@ -167,7 +166,7 @@ export function IntegrationsSection({ userId, hasActiveSession, open }: Integrat
 
     void (async () => {
       try {
-        const response = await updateIntegrations(userId, patches, {
+        const response = await updateIntegrations(patches, {
           signal: controller.signal,
         });
         if (controller.signal.aborted) {
@@ -187,7 +186,7 @@ export function IntegrationsSection({ userId, hasActiveSession, open }: Integrat
         }
       }
     })();
-  }, [afterSave, draft, items, clearOAuthError, userId]);
+  }, [afterSave, draft, items, clearOAuthError]);
 
   useEffect(() => {
     if (!open) {

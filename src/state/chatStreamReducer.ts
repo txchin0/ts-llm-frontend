@@ -53,7 +53,10 @@ export function applyRespondEvent(
         status: 'error',
         error: { code: event.code, message: event.message },
       };
-    case 'unknown':
+    case 'malformed':
+      // Wire corruption / incomplete shape — logged at the stream boundary if
+      // needed; the transcript stays unchanged (same as Android Ignored≠Malformed
+      // split: UI must not treat malformed like a successful skip of work).
       return message;
     default: {
       const _exhaustive: never = event;

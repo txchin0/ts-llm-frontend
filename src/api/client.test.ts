@@ -5,19 +5,18 @@ import { isRespondSseEvent } from './types.ts';
 import { collectAsync, createSseResponse } from '../test/helpers.ts';
 
 describe('isRespondSseEvent', () => {
-  const knownTypes = [
-    'start',
-    'delta',
-    'thinking_delta',
-    'final',
-    'usage',
-    'tool_call',
-    'tool_result',
-    'error',
-  ] as const;
+  it('accepts a well-formed delta', () => {
+    expect(isRespondSseEvent({ type: 'delta', text: 'hello' })).toBe(true);
+  });
 
-  it.each(knownTypes)('accepts known type %s', (type) => {
-    expect(isRespondSseEvent({ type })).toBe(true);
+  it('accepts an empty delta text (valid no-op chunk)', () => {
+    expect(isRespondSseEvent({ type: 'delta', text: '' })).toBe(true);
+  });
+
+  it('rejects known types that are missing required fields', () => {
+    expect(isRespondSseEvent({ type: 'delta' })).toBe(false);
+    expect(isRespondSseEvent({ type: 'start' })).toBe(false);
+    expect(isRespondSseEvent({ type: 'error', request_id: 'r1' })).toBe(false);
   });
 
   it('rejects null and missing type', () => {
@@ -43,14 +42,14 @@ describe('respondStream', () => {
     );
 
     const events = await collectAsync(
-      respondStream({ user_id: 'u1', message: 'hi' }),
+      respondStream({ message: 'hi' }),
     );
 
     expect(events).toEqual([{ type: 'delta', text: 'hello' }]);
     expect(fetch).toHaveBeenCalledWith('/v1/respond', expect.objectContaining({ method: 'POST' }));
   });
 
-  it('yields unknown events for non-JSON data', async () => {
+  it('yields malformed events for non-JSON data', async () => {
     const body = 'data: not-json\n\n';
     vi.stubGlobal(
       'fetch',
@@ -58,13 +57,15 @@ describe('respondStream', () => {
     );
 
     const events = await collectAsync(
-      respondStream({ user_id: 'u1', message: 'hi' }),
+      respondStream({ message: 'hi' }),
     );
 
-    expect(events).toEqual([{ type: 'unknown', eventName: undefined, raw: 'not-json' }]);
+    expect(events).toEqual([
+      { type: 'malformed', detail: 'unparseable JSON', eventName: undefined, raw: 'not-json' },
+    ]);
   });
 
-  it('yields unknown events for unrecognized JSON types', async () => {
+  it('yields malformed events for unrecognized JSON types', async () => {
     const body = 'data: {"type":"audio","url":"x"}\n\n';
     vi.stubGlobal(
       'fetch',
@@ -72,10 +73,30 @@ describe('respondStream', () => {
     );
 
     const events = await collectAsync(
-      respondStream({ user_id: 'u1', message: 'hi' }),
+      respondStream({ message: 'hi' }),
     );
 
-    expect(events[0]).toMatchObject({ type: 'unknown', raw: { type: 'audio', url: 'x' } });
+    expect(events[0]).toMatchObject({
+      type: 'malformed',
+      detail: 'unknown event type: audio',
+      raw: { type: 'audio', url: 'x' },
+    });
+  });
+
+  it('yields malformed events for known types missing required fields', async () => {
+    const body = 'data: {"type":"start"}\n\n';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(createSseResponse(body))),
+    );
+
+    const events = await collectAsync(respondStream({ message: 'hi' }));
+
+    expect(events[0]).toMatchObject({
+      type: 'malformed',
+      detail: 'incomplete start event',
+      raw: { type: 'start' },
+    });
   });
 
   it('throws ApiHttpError on HTTP failure', async () => {
@@ -84,7 +105,7 @@ describe('respondStream', () => {
       vi.fn(() => Promise.resolve(createSseResponse('', { ok: false, status: 503 }))),
     );
 
-    await expect(collectAsync(respondStream({ user_id: 'u1', message: 'hi' }))).rejects.toBeInstanceOf(
+    await expect(collectAsync(respondStream({ message: 'hi' }))).rejects.toBeInstanceOf(
       ApiHttpError,
     );
   });
@@ -102,7 +123,7 @@ describe('respondStream', () => {
       ),
     );
 
-    await expect(collectAsync(respondStream({ user_id: 'u1', message: 'hi' }))).rejects.toThrow(
+    await expect(collectAsync(respondStream({ message: 'hi' }))).rejects.toThrow(
       'empty response body',
     );
   });

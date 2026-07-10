@@ -1,0 +1,93 @@
+{
+  "$comment": "Canonical contract for the ts-llm Respond SSE wire protocol. TypeScript (src/api/respondProtocol.test.ts), Kotlin (RespondProtocolTest.kt), and mock-server.mjs all consume these samples. API paths live in endpoints.json — keep this file about the stream.",
+  "respondAccept": "text/event-stream",
+  "request": {
+    "message": "What's on my calendar today?",
+    "session_id": "sess_fixture01",
+    "show_thinking": true
+  },
+  "events": {
+    "start": {
+      "type": "start",
+      "request_id": "req_fixture01",
+      "user_id": "user_fixture",
+      "session_id": "sess_fixture01",
+      "started_at": "2026-07-10T12:00:00.000Z"
+    },
+    "delta": {
+      "type": "delta",
+      "text": "You have one meeting today: Design review at 14:00."
+    },
+    "thinking_delta": {
+      "type": "thinking_delta",
+      "text": "The user wants today's events; I should call the calendar tool."
+    },
+    "final": {
+      "type": "final",
+      "request_id": "req_fixture01",
+      "finish_reason": "stop",
+      "completed_at": "2026-07-10T12:00:04.000Z"
+    },
+    "usage": {
+      "type": "usage",
+      "request_id": "req_fixture01",
+      "usage": { "input_tokens": 142, "output_tokens": 96, "total_tokens": 238 }
+    },
+    "tool_call": {
+      "type": "tool_call",
+      "request_id": "req_fixture01",
+      "session_id": "sess_fixture01",
+      "step": 0,
+      "tool_call_id": "call_fixture01",
+      "tool_name": "google_calendar",
+      "input": { "range": "today" }
+    },
+    "tool_result": {
+      "type": "tool_result",
+      "request_id": "req_fixture01",
+      "session_id": "sess_fixture01",
+      "step": 0,
+      "tool_call_id": "call_fixture01",
+      "tool_name": "google_calendar",
+      "output": { "events": [{ "title": "Design review", "start": "14:00" }] },
+      "is_error": false
+    },
+    "error": {
+      "type": "error",
+      "request_id": "req_fixture01",
+      "code": "provider_error",
+      "message": "The provider returned an error."
+    }
+  },
+  "$streamComment": "One canonical turn: `stream` names the events in order; `rawStreamLines` is the same turn in wire form (physical lines, joined with \\n). It exercises the frame grammar both parsers must accept: an `event:` name line, a keep-alive comment, and one payload split across two data: lines. Parsing rawStreamLines must yield exactly the samples named in `stream` — tests on both sides verify that correspondence.",
+  "stream": [
+    "start",
+    "thinking_delta",
+    "tool_call",
+    "tool_result",
+    "delta",
+    "usage",
+    "final"
+  ],
+  "rawStreamLines": [
+    "event: start",
+    "data: {\"type\":\"start\",\"request_id\":\"req_fixture01\",\"user_id\":\"user_fixture\",\"session_id\":\"sess_fixture01\",\"started_at\":\"2026-07-10T12:00:00.000Z\"}",
+    "",
+    "data: {\"type\":\"thinking_delta\",\"text\":\"The user wants today's events; I should call the calendar tool.\"}",
+    "",
+    ": keep-alive",
+    "",
+    "event: tool_call",
+    "data: {\"type\":\"tool_call\",\"request_id\":\"req_fixture01\",\"session_id\":\"sess_fixture01\",\"step\":0,",
+    "data: \"tool_call_id\":\"call_fixture01\",\"tool_name\":\"google_calendar\",\"input\":{\"range\":\"today\"}}",
+    "",
+    "data: {\"type\":\"tool_result\",\"request_id\":\"req_fixture01\",\"session_id\":\"sess_fixture01\",\"step\":0,\"tool_call_id\":\"call_fixture01\",\"tool_name\":\"google_calendar\",\"output\":{\"events\":[{\"title\":\"Design review\",\"start\":\"14:00\"}]},\"is_error\":false}",
+    "",
+    "data: {\"type\":\"delta\",\"text\":\"You have one meeting today: Design review at 14:00.\"}",
+    "",
+    "data: {\"type\":\"usage\",\"request_id\":\"req_fixture01\",\"usage\":{\"input_tokens\":142,\"output_tokens\":96,\"total_tokens\":238}}",
+    "",
+    "data: {\"type\":\"final\",\"request_id\":\"req_fixture01\",\"finish_reason\":\"stop\",\"completed_at\":\"2026-07-10T12:00:04.000Z\"}",
+    ""
+  ]
+}

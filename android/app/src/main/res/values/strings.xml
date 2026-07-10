@@ -12,5 +12,6 @@
     <string name="assist_send_hint">Send</string>
     <string name="assist_compose_placeholder">Message the agent…</string>
     <string name="assist_error_no_server">Set the server URL in Ember first</string>
+    <string name="assist_error_signed_out">Sign in to Ember first</string>
     <string name="assist_error_no_mic">Open Ember once to grant microphone access</string>
 </resources>

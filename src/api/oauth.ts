@@ -1,6 +1,19 @@
-import { getApiBaseUrl } from './config.ts';
+import { resolveApiUrl } from './config.ts';
+import {
+  OAUTH_CONNECT_TOKEN_PATH,
+  OAUTH_DISCONNECT_PATH,
+  OAUTH_START_PATH,
+  OAUTH_STATUS_PATH,
+} from './endpoints.ts';
 import { ApiHttpError } from './errors.ts';
-import { fetchJson } from './http.ts';
+import { fetchJson, fetchNoContent } from './http.ts';
+
+export {
+  OAUTH_CONNECT_TOKEN_PATH,
+  OAUTH_DISCONNECT_PATH,
+  OAUTH_START_PATH,
+  OAUTH_STATUS_PATH,
+} from './endpoints.ts';
 
 export interface OAuthStatusResponse {
   connected: boolean;
@@ -13,80 +26,65 @@ export interface OAuthRequestOptions {
   baseUrl?: string;
 }
 
-interface OAuthErrorBody {
-  code: string;
-  message: string;
-  provider_id?: string;
+function fillOAuthPath(template: string, providerId: string): string {
+  return template.replace('{provider_id}', encodeURIComponent(providerId));
 }
 
-function isOAuthErrorBody(value: unknown): value is OAuthErrorBody {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-  const body = value as { code?: unknown; message?: unknown };
-  return typeof body.code === 'string' && typeof body.message === 'string';
+interface ConnectTokenResponse {
+  connect_token: string;
+  expires_in: number;
 }
 
-function oauthPath(providerId: string, baseUrl: string): string {
-  return `${baseUrl}/v1/oauth/${encodeURIComponent(providerId)}`;
+/**
+ * Mints a short-lived single-use connect token bound to the authenticated
+ * user. `/start` is a top-level navigation that cannot carry a bearer header,
+ * so this token carries the identity instead.
+ */
+export async function createOAuthConnectToken(
+  options: OAuthRequestOptions = {},
+): Promise<string> {
+  const response = await fetchJson<ConnectTokenResponse>(OAUTH_CONNECT_TOKEN_PATH, {
+    method: 'POST',
+    signal: options.signal,
+    baseUrl: options.baseUrl,
+  });
+  return response.connect_token;
 }
 
 /** Builds the browser navigation URL to start OAuth consent for a provider. */
 export function buildOAuthStartUrl(
   providerId: string,
-  userId: string,
-  baseUrl: string = getApiBaseUrl(),
+  connectToken: string,
+  baseUrl?: string,
 ): string {
-  const params = new URLSearchParams({ user_id: userId });
-  return `${oauthPath(providerId, baseUrl)}/start?${params}`;
+  const params = new URLSearchParams({ connect_token: connectToken });
+  return resolveApiUrl(
+    `${fillOAuthPath(OAUTH_START_PATH, providerId)}?${params}`,
+    baseUrl,
+  );
 }
 
-/** Reports OAuth connection state and scope coverage for a user and provider. */
+/** Reports OAuth connection state and scope coverage for the authenticated user. */
 export async function getOAuthStatus(
   providerId: string,
-  userId: string,
   options: OAuthRequestOptions = {},
 ): Promise<OAuthStatusResponse> {
-  const baseUrl = options.baseUrl ?? getApiBaseUrl();
-  const params = new URLSearchParams({ user_id: userId });
-
-  return fetchJson<OAuthStatusResponse>(`${oauthPath(providerId, baseUrl)}/status?${params}`, {
-    method: 'GET',
-    headers: { accept: 'application/json' },
+  return fetchJson<OAuthStatusResponse>(fillOAuthPath(OAUTH_STATUS_PATH, providerId), {
     signal: options.signal,
+    baseUrl: options.baseUrl,
   });
 }
 
-/** Deletes stored OAuth tokens for a user and provider. */
+/** Deletes the authenticated user's stored OAuth tokens for a provider. */
 export async function disconnectOAuth(
   providerId: string,
-  userId: string,
   options: OAuthRequestOptions = {},
 ): Promise<void> {
-  const baseUrl = options.baseUrl ?? getApiBaseUrl();
-  const params = new URLSearchParams({ user_id: userId });
-
-  const response = await fetch(`${oauthPath(providerId, baseUrl)}?${params}`, {
+  await fetchNoContent(fillOAuthPath(OAUTH_DISCONNECT_PATH, providerId), {
     method: 'DELETE',
-    headers: { accept: 'application/json' },
     signal: options.signal,
+    baseUrl: options.baseUrl,
   });
-
-  if (!response.ok) {
-    if (response.status === 400) {
-      try {
-        const body: unknown = await response.json();
-        if (isOAuthErrorBody(body)) {
-          throw new ApiHttpError(response.status, response.statusText, body.message);
-        }
-      } catch (error) {
-        if (error instanceof ApiHttpError) {
-          throw error;
-        }
-      }
-    }
-    throw new ApiHttpError(response.status, response.statusText);
-  }
 }
 
 const OAUTH_PROVIDER_LABELS: Record<string, string> = {

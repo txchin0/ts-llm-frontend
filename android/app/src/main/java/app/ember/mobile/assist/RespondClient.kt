@@ -16,12 +16,18 @@ import org.json.JSONObject
 
 /**
  * Streams a chat turn from the ts-llm agent server: POST /v1/respond with an
- * SSE response. Mirrors the web client (src/api/client.ts + sse.ts): frames
- * are blank-line separated, payload JSON carries the event `type`. Only the
- * events the overlay renders are surfaced; thinking/usage/tool_result are
- * ignored. All callbacks are delivered on the main thread.
+ * SSE response. Wire knowledge lives behind [SseDataAccumulator] (frame
+ * grammar) and [RespondEvent.parse] (event vocabulary), both contract-tested
+ * against protocol/respond.json and protocol/endpoints.json alongside the web
+ * client. Only the events the
+ * overlay renders are surfaced; thinking/usage/tool_result are ignored. All
+ * callbacks are delivered on the main thread.
+ *
+ * Identity comes from the bearer token, never from the body. A 401 is
+ * refreshed + retried once by [TokenAuthenticator]; if it still fails the
+ * user is asked to sign in again in the web app.
  */
-class RespondClient(private val baseUrl: String, private val userId: String) {
+class RespondClient(private val baseUrl: String, private val tokens: AuthTokenStore) {
 
     interface Callbacks {
         fun onSessionStarted(sessionId: String)
@@ -34,19 +40,24 @@ class RespondClient(private val baseUrl: String, private val userId: String) {
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.MILLISECONDS) // streaming: no read timeout
+        .authenticator(TokenAuthenticator(baseUrl, tokens))
         .build()
     private val mainHandler = Handler(Looper.getMainLooper())
 
     /** Returns the in-flight [Call]; cancel it when the overlay is dismissed. */
     fun send(message: String, sessionId: String?, callbacks: Callbacks): Call {
         val body = JSONObject().apply {
-            put("user_id", userId)
             put("message", message)
             if (sessionId != null) put("session_id", sessionId)
         }
         val request = Request.Builder()
-            .url("$baseUrl/v1/respond")
+            .url("$baseUrl$RESPOND_PATH")
             .header("accept", "text/event-stream")
+            .apply {
+                // May be absent/expired (assistant outlives the WebView); the
+                // authenticator turns the resulting 401 into refresh + retry.
+                tokens.accessToken?.let { header("Authorization", "Bearer $it") }
+            }
             .post(body.toString().toRequestBody("application/json".toMediaType()))
             .build()
 
@@ -62,7 +73,12 @@ class RespondClient(private val baseUrl: String, private val userId: String) {
                 Log.i(TAG, "respond response: ${response.code}")
                 response.use { resp ->
                     if (!resp.isSuccessful) {
-                        post { callbacks.onError("Agent server error (${resp.code})") }
+                        val message = if (resp.code == 401) {
+                            "Signed out — open Ember and sign in again"
+                        } else {
+                            "Agent server error (${resp.code})"
+                        }
+                        post { callbacks.onError(message) }
                         return
                     }
                     val source = resp.body?.source()
@@ -71,23 +87,13 @@ class RespondClient(private val baseUrl: String, private val userId: String) {
                         return
                     }
 
-                    val dataLines = StringBuilder()
+                    val accumulator = SseDataAccumulator()
                     try {
                         while (true) {
                             val line = source.readUtf8Line() ?: break
-                            when {
-                                line.isEmpty() -> {
-                                    dispatch(dataLines.toString(), callbacks)
-                                    dataLines.setLength(0)
-                                }
-                                line.startsWith("data:") -> {
-                                    if (dataLines.isNotEmpty()) dataLines.append('\n')
-                                    dataLines.append(line.removePrefix("data:").removePrefix(" "))
-                                }
-                                // event:/id:/comment lines carry nothing we need.
-                            }
+                            accumulator.feed(line)?.let { dispatch(it, callbacks) }
                         }
-                        dispatch(dataLines.toString(), callbacks)
+                        accumulator.flush()?.let { dispatch(it, callbacks) }
                     } catch (e: IOException) {
                         if (!call.isCanceled()) {
                             post { callbacks.onError(e.message ?: "Stream interrupted") }
@@ -100,22 +106,17 @@ class RespondClient(private val baseUrl: String, private val userId: String) {
     }
 
     private fun dispatch(payload: String, callbacks: Callbacks) {
-        if (payload.isBlank()) return
-        val json = try {
-            JSONObject(payload)
-        } catch (e: Exception) {
-            Log.w(TAG, "unparseable SSE payload: ${payload.take(120)}", e)
-            return
-        }
-        when (json.optString("type")) {
-            "start" -> json.optString("session_id").takeIf { it.isNotEmpty() }
-                ?.let { id -> post { callbacks.onSessionStarted(id) } }
-            "delta" -> json.optString("text").takeIf { it.isNotEmpty() }
-                ?.let { text -> post { callbacks.onDelta(text) } }
-            "tool_call" -> json.optString("tool_name").takeIf { it.isNotEmpty() }
-                ?.let { name -> post { callbacks.onToolActivity(name) } }
-            "final" -> post { callbacks.onFinal() }
-            "error" -> post { callbacks.onError(json.optString("message").ifEmpty { "Agent error" }) }
+        when (val result = RespondEvent.parse(payload)) {
+            is RespondParseResult.Rendered -> when (val event = result.event) {
+                is RespondEvent.SessionStarted -> post { callbacks.onSessionStarted(event.sessionId) }
+                is RespondEvent.Delta -> post { callbacks.onDelta(event.text) }
+                is RespondEvent.ToolActivity -> post { callbacks.onToolActivity(event.toolName) }
+                RespondEvent.Final -> post { callbacks.onFinal() }
+                is RespondEvent.Error -> post { callbacks.onError(event.message) }
+            }
+            RespondParseResult.Ignored -> Unit
+            is RespondParseResult.Malformed ->
+                Log.w(TAG, "malformed SSE payload (${result.detail}): ${payload.take(120)}")
         }
     }
 
@@ -123,7 +124,9 @@ class RespondClient(private val baseUrl: String, private val userId: String) {
         mainHandler.post(block)
     }
 
-    private companion object {
-        const val TAG = "EmberAssist"
+    companion object {
+        /** Contract-tested against protocol/endpoints.json (respond). */
+        internal const val RESPOND_PATH = "/v1/respond"
+        private const val TAG = "EmberAssist"
     }
 }

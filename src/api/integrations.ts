@@ -1,7 +1,7 @@
-import { getApiBaseUrl } from './config.ts';
+import { INTEGRATIONS_PATH } from './endpoints.ts';
 import { fetchJson } from './http.ts';
 
-const INTEGRATIONS_PATH = '/v1/integrations';
+export { INTEGRATIONS_PATH } from './endpoints.ts';
 
 export interface IntegrationSummary {
   id: string;
@@ -24,39 +24,25 @@ export type IntegrationEnablementPatch = {
   enabled: boolean;
 };
 
-/** Lists registered integrations and effective enablement for a user. */
+/** Lists registered integrations and effective enablement for the authenticated user. */
 export async function listIntegrations(
-  userId: string,
   options: IntegrationsRequestOptions = {},
 ): Promise<ListIntegrationsResponse> {
-  const baseUrl = options.baseUrl ?? getApiBaseUrl();
-  const params = new URLSearchParams({ user_id: userId });
-
-  return fetchJson<ListIntegrationsResponse>(`${baseUrl}${INTEGRATIONS_PATH}?${params}`, {
-    method: 'GET',
-    headers: { accept: 'application/json' },
+  return fetchJson<ListIntegrationsResponse>(INTEGRATIONS_PATH, {
     signal: options.signal,
+    baseUrl: options.baseUrl,
   });
 }
 
 /** Applies enable/disable patches for one or more integrations. */
 export async function updateIntegrations(
-  userId: string,
   patches: Record<string, IntegrationEnablementPatch>,
   options: IntegrationsRequestOptions = {},
 ): Promise<ListIntegrationsResponse> {
-  const baseUrl = options.baseUrl ?? getApiBaseUrl();
-
-  return fetchJson<ListIntegrationsResponse>(`${baseUrl}${INTEGRATIONS_PATH}`, {
+  return fetchJson<ListIntegrationsResponse>(INTEGRATIONS_PATH, {
     method: 'PUT',
-    headers: {
-      accept: 'application/json',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      user_id: userId,
-      integrations: patches,
-    }),
+    json: { integrations: patches },
     signal: options.signal,
+    baseUrl: options.baseUrl,
   });
 }

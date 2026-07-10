@@ -1,0 +1,22 @@
+{
+  "$comment": "Canonical contract for the web<->native handshake: the names both runtimes must agree on inside the Capacitor Preferences backing store, plus the server-URL normalization cases both implementations must resolve identically. TypeScript side: src/native/handshake.ts + src/api/config.ts (checked by src/native/handshake.test.ts). Kotlin side: EmberSettings.kt + AuthTokenStore.kt (checked by android/app/src/test/.../HandshakeContractTest.kt). Rename a key here first; the failing side's test says what to update.",
+  "store": "CapacitorStorage",
+  "keys": {
+    "serverUrl": "ts-llm.server_url",
+    "micLanguage": "ts-llm.mic_language",
+    "accessToken": "ts-llm.access_token",
+    "refreshToken": "ts-llm.refresh_token"
+  },
+  "$normalizationComment": "normalized: null means 'unset' (TypeScript returns '', Kotlin returns null).",
+  "serverUrlNormalization": [
+    { "input": null, "normalized": null },
+    { "input": "", "normalized": null },
+    { "input": "   ", "normalized": null },
+    { "input": "///", "normalized": null },
+    { "input": "192.168.1.20:8787", "normalized": "http://192.168.1.20:8787" },
+    { "input": " 10.0.2.2:3999 ", "normalized": "http://10.0.2.2:3999" },
+    { "input": "http://192.168.1.20:8787/", "normalized": "http://192.168.1.20:8787" },
+    { "input": "https://agent.example.com///", "normalized": "https://agent.example.com" },
+    { "input": "HTTPS://Agent.Example.com", "normalized": "HTTPS://Agent.Example.com" }
+  ]
+}

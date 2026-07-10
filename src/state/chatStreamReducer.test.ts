@@ -111,9 +111,13 @@ describe('applyRespondEvent', () => {
     expect(message.error).toEqual({ code: 'provider_error', message: 'Provider unavailable' });
   });
 
-  it('ignores unknown events', () => {
+  it('leaves the message unchanged for malformed events', () => {
     const before = makeAssistantMessage({ content: 'keep' });
-    const after = applyRespondEvent(before, { type: 'unknown', raw: { type: 'audio' } });
+    const after = applyRespondEvent(before, {
+      type: 'malformed',
+      detail: 'unknown event type: audio',
+      raw: { type: 'audio' },
+    });
 
     expect(after).toEqual(before);
   });

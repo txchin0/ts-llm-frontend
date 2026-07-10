@@ -104,6 +104,12 @@ class EmberAssistSession(context: Context) : VoiceInteractionSession(context) {
             showStatus(context.getString(R.string.assist_error_no_server))
             return
         }
+        val tokens = AuthTokenStore(context)
+        if (!tokens.hasSession) {
+            // Never signed in, or signed out in the web app.
+            showStatus(context.getString(R.string.assist_error_signed_out))
+            return
+        }
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) !=
             PackageManager.PERMISSION_GRANTED
         ) {
@@ -112,7 +118,7 @@ class EmberAssistSession(context: Context) : VoiceInteractionSession(context) {
             return
         }
 
-        respondClient = RespondClient(serverUrl, settings.userId)
+        respondClient = RespondClient(serverUrl, tokens)
         recognizer = SpeechTurnRecognizer(context, settings.micLanguage)
         startListening()
     }

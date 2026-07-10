@@ -1,7 +1,7 @@
-import { getApiBaseUrl } from './config.ts';
+import { TASKS_PATH } from './endpoints.ts';
 import { fetchJson } from './http.ts';
 
-const TASKS_PATH = '/v1/tasks';
+export { TASKS_PATH } from './endpoints.ts';
 
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed';
 
@@ -26,19 +26,14 @@ export interface ListTasksOptions {
 }
 
 /**
- * Lists background tasks for a user. Omits status/limit query params so the
- * server returns pending and running tasks in FIFO order.
+ * Lists the authenticated user's background tasks. Omits status/limit query
+ * params so the server returns pending and running tasks in FIFO order.
  */
 export async function listTasks(
-  userId: string,
   options: ListTasksOptions = {},
 ): Promise<ListTasksResponse> {
-  const baseUrl = options.baseUrl ?? getApiBaseUrl();
-  const params = new URLSearchParams({ user_id: userId });
-
-  return fetchJson<ListTasksResponse>(`${baseUrl}${TASKS_PATH}?${params}`, {
-    method: 'GET',
-    headers: { accept: 'application/json' },
+  return fetchJson<ListTasksResponse>(TASKS_PATH, {
     signal: options.signal,
+    baseUrl: options.baseUrl,
   });
 }

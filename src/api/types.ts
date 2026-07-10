@@ -1,6 +1,6 @@
-// Mirrors the wire contract exported by the ts-llm server in
-// src/contracts/respond.ts. Kept as plain TypeScript so the frontend has no
-// runtime schema dependency; the SSE client does light structural validation.
+// Mirrors the Respond SSE wire contract in protocol/respond.json. Kept as plain
+// TypeScript so the frontend has no runtime schema dependency; the SSE client
+// does structural validation via isRespondSseEvent.
 
 export type ProviderFinishReason =
   | 'stop'
@@ -17,7 +17,6 @@ export interface ProviderUsage {
 }
 
 export interface RespondRequest {
-  user_id: string;
   /** Omitted on the first turn; the server issues one in the `start` event. */
   session_id?: string;
   message: string;
@@ -98,26 +97,104 @@ export type RespondSseEvent =
 
 export type RespondSseEventType = RespondSseEvent['type'];
 
-const KNOWN_EVENT_TYPES: ReadonlySet<string> = new Set<RespondSseEventType>([
-  'start',
-  'delta',
-  'thinking_delta',
-  'final',
-  'usage',
-  'tool_call',
-  'tool_result',
-  'error',
-]);
+// Mapped-object form so the compiler enforces exhaustiveness in both
+// directions: extending the union or removing a member breaks this line
+// until the list (and, via respondProtocol.test.ts, the protocol contract
+// in protocol/respond.json) is updated to match.
+const EVENT_TYPE_EXHAUSTIVE: { [K in RespondSseEventType]: true } = {
+  start: true,
+  delta: true,
+  thinking_delta: true,
+  final: true,
+  usage: true,
+  tool_call: true,
+  tool_result: true,
+  error: true,
+};
+
+export const RESPOND_EVENT_TYPES = Object.keys(
+  EVENT_TYPE_EXHAUSTIVE,
+) as readonly RespondSseEventType[];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+function isNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isProviderUsage(value: unknown): value is ProviderUsage {
+  return (
+    isRecord(value) &&
+    isNumber(value.input_tokens) &&
+    isNumber(value.output_tokens) &&
+    isNumber(value.total_tokens)
+  );
+}
 
 /**
  * Narrow an arbitrary parsed JSON value to a known SSE event. Unknown event
- * types (e.g. a future `audio` event) are intentionally rejected here so the
- * client can surface them separately rather than mis-handling them.
+ * types (e.g. a future `audio` event) are rejected so the client can surface
+ * them separately; known types also require their documented fields.
  */
 export function isRespondSseEvent(value: unknown): value is RespondSseEvent {
-  if (typeof value !== 'object' || value === null) {
+  if (!isRecord(value) || !isString(value.type)) {
     return false;
   }
-  const type = (value as { type?: unknown }).type;
-  return typeof type === 'string' && KNOWN_EVENT_TYPES.has(type);
+
+  const type = value.type as RespondSseEventType;
+  if (!(type in EVENT_TYPE_EXHAUSTIVE)) {
+    return false;
+  }
+
+  switch (type) {
+    case 'start':
+      return (
+        isString(value.request_id) &&
+        isString(value.user_id) &&
+        isString(value.session_id) &&
+        isString(value.started_at)
+      );
+    case 'delta':
+    case 'thinking_delta':
+      return isString(value.text);
+    case 'final':
+      return (
+        isString(value.request_id) &&
+        isString(value.finish_reason) &&
+        isString(value.completed_at)
+      );
+    case 'usage':
+      return isString(value.request_id) && isProviderUsage(value.usage);
+    case 'tool_call':
+      return (
+        isString(value.request_id) &&
+        isString(value.session_id) &&
+        isNumber(value.step) &&
+        isString(value.tool_call_id) &&
+        isString(value.tool_name) &&
+        'input' in value
+      );
+    case 'tool_result':
+      return (
+        isString(value.request_id) &&
+        isString(value.session_id) &&
+        isNumber(value.step) &&
+        isString(value.tool_call_id) &&
+        isString(value.tool_name) &&
+        'output' in value &&
+        typeof value.is_error === 'boolean'
+      );
+    case 'error':
+      return isString(value.request_id) && isString(value.code) && isString(value.message);
+    default: {
+      const _exhaustive: never = type;
+      return _exhaustive;
+    }
+  }
 }

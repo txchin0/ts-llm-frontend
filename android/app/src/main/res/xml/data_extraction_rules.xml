@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Backup / device-transfer rules (android:dataExtractionRules, API >= 31). Keep
+  the auth token pair (in CapacitorStorage SharedPreferences) off cloud backup
+  and device-to-device transfer; see backup_rules.xml for the pre-31 equivalent.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="CapacitorStorage.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="CapacitorStorage.xml" />
+    </device-transfer>
+</data-extraction-rules>

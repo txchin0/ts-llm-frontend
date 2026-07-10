@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { SERVER_URL_KEY } from '../api/config.ts';
 import { themeColorHex } from '../brand.ts';
+import { MIC_LANGUAGE_KEY, SERVER_URL_KEY } from '../native/handshake.ts';
 import {
   bootstrapNativeSettingsMirror,
   mirrorSettingToNative,
@@ -14,12 +14,9 @@ import {
 export type ThemePreference = 'light' | 'dark' | 'system';
 export type ResolvedTheme = 'light' | 'dark';
 
-const USER_ID_KEY = 'ts-llm.user_id';
 const THEME_KEY = 'ts-llm.theme';
-const MIC_LANGUAGE_KEY = 'ts-llm.mic_language';
 const SHOW_THINKING_KEY = 'ts-llm.show_thinking';
 const SHOW_TOOL_CALLS_KEY = 'ts-llm.show_tool_calls';
-const DEFAULT_USER_ID = 'web-user';
 const DEFAULT_SHOW_TOOL_CALLS = true;
 
 function readStored(key: string): string | null {
@@ -69,8 +66,6 @@ function applyResolvedTheme(theme: ResolvedTheme): void {
 }
 
 export interface Settings {
-  userId: string;
-  setUserId: (next: string) => void;
   /** Absolute agent-server URL. Empty = same origin (browser); set on native. */
   serverUrl: string;
   setServerUrl: (next: string) => void;
@@ -87,15 +82,13 @@ export interface Settings {
 }
 
 /**
- * Holds persisted app preferences: user id, theme, thinking visibility, tool
- * call visibility, and voice input language. Conversations are never stored. Applies the resolved
- * theme to the document root so CSS tokens can switch via `[data-theme]`.
+ * Holds persisted app preferences: theme, thinking visibility, tool call
+ * visibility, and voice input language. Identity lives in useAuth (derived
+ * from the logged-in account), not here. Conversations are never stored.
+ * Applies the resolved theme to the document root so CSS tokens can switch
+ * via `[data-theme]`.
  */
 export function useSettings(): Settings {
-  const [userId, setUserIdState] = useState<string>(
-    () => readStored(USER_ID_KEY) ?? DEFAULT_USER_ID,
-  );
-
   const [serverUrl, setServerUrlState] = useState<string>(
     () => readStored(SERVER_URL_KEY) ?? '',
   );
@@ -143,14 +136,6 @@ export function useSettings(): Settings {
     bootstrapNativeSettingsMirror();
   }, []);
 
-  const setUserId = useCallback((next: string) => {
-    const trimmed = next.trim();
-    if (trimmed.length === 0) return;
-    setUserIdState(trimmed);
-    writeStored(USER_ID_KEY, trimmed);
-    mirrorSettingToNative(USER_ID_KEY, trimmed);
-  }, []);
-
   const setServerUrl = useCallback((next: string) => {
     // Persist the raw (trimmed) value; getApiBaseUrl() owns URL normalization.
     // Empty is allowed and resets to same-origin (relative) requests.
@@ -182,8 +167,6 @@ export function useSettings(): Settings {
   }, []);
 
   return {
-    userId,
-    setUserId,
     serverUrl,
     setServerUrl,
     theme,

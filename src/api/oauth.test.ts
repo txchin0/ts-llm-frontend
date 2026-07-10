@@ -11,9 +11,9 @@ import {
 } from './oauth.ts';
 
 describe('buildOAuthStartUrl', () => {
-  it('builds a start URL with encoded provider and user id', () => {
-    expect(buildOAuthStartUrl('google', 'user 1', 'https://api.test')).toBe(
-      'https://api.test/v1/oauth/google/start?user_id=user+1',
+  it('builds a start URL with encoded provider and connect token', () => {
+    expect(buildOAuthStartUrl('google', 'oct_a+b', 'https://api.test')).toBe(
+      'https://api.test/v1/oauth/google/start?connect_token=oct_a%2Bb',
     );
   });
 });
@@ -89,7 +89,7 @@ describe('disconnectOAuth', () => {
       ),
     );
 
-    await expect(disconnectOAuth('google', 'user-1')).resolves.toBeUndefined();
+    await expect(disconnectOAuth('google')).resolves.toBeUndefined();
   });
 
   it('throws ApiHttpError with OAuth error message on 400', async () => {
@@ -105,7 +105,7 @@ describe('disconnectOAuth', () => {
       ),
     );
 
-    await expect(disconnectOAuth('google', 'user-1')).rejects.toEqual(
+    await expect(disconnectOAuth('google')).rejects.toEqual(
       expect.objectContaining<Partial<ApiHttpError>>({ message: 'Not connected' }),
     );
   });

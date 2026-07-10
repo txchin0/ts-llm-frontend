@@ -17,7 +17,6 @@ interface HeaderProps {
   onSetTheme: (theme: ThemePreference) => void;
   hasSession: boolean;
   onNewChat: () => void;
-  onOpenUserDialog: () => void;
   onOpenSettings: () => void;
 }
 
@@ -39,7 +38,6 @@ export function Header({
   onSetTheme,
   hasSession,
   onNewChat,
-  onOpenUserDialog,
   onOpenSettings,
 }: HeaderProps) {
   const cycleTheme = () => {
@@ -98,9 +96,9 @@ export function Header({
           <button
             type="button"
             className={styles.userButton}
-            onClick={onOpenUserDialog}
-            aria-label={`Speaking as ${userId}. Change identity.`}
-            title={`Speaking as ${userId}`}
+            onClick={onOpenSettings}
+            aria-label={`Signed in as ${userId}. Open settings.`}
+            title={`Signed in as ${userId}`}
           >
             <UserIcon width={18} height={18} />
             <span className={styles.userId}>{userId}</span>

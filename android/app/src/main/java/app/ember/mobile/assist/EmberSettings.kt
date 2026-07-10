@@ -7,28 +7,25 @@ import java.util.Locale
  * App settings the assistant needs, read from the Capacitor Preferences
  * backing store ("CapacitorStorage" SharedPreferences). The web app mirrors
  * localStorage writes there (src/native/settingsMirror.ts); this class only
- * reads.
+ * reads. Auth tokens live in the same store but are read-write — see
+ * [AuthTokenStore].
  */
 data class EmberSettings(
     /** Normalized absolute base URL of the agent server, or null when unset. */
     val serverUrl: String?,
-    val userId: String,
     /** Concrete BCP 47 tag ("system" is resolved to the device locale). */
     val micLanguage: String,
 ) {
     companion object {
-        private const val STORE = "CapacitorStorage"
-        private const val KEY_SERVER_URL = "ts-llm.server_url"
-        private const val KEY_USER_ID = "ts-llm.user_id"
-        private const val KEY_MIC_LANGUAGE = "ts-llm.mic_language"
-        private const val DEFAULT_USER_ID = "web-user"
+        // Shared with the web app; contract-tested against protocol/handshake.json.
+        internal const val STORE = "CapacitorStorage"
+        internal const val KEY_SERVER_URL = "ts-llm.server_url"
+        internal const val KEY_MIC_LANGUAGE = "ts-llm.mic_language"
 
         fun load(context: Context): EmberSettings {
             val prefs = context.getSharedPreferences(STORE, Context.MODE_PRIVATE)
             return EmberSettings(
                 serverUrl = normalizeServerUrl(prefs.getString(KEY_SERVER_URL, null)),
-                userId = prefs.getString(KEY_USER_ID, null)?.trim()?.ifEmpty { null }
-                    ?: DEFAULT_USER_ID,
                 micLanguage = resolveMicLanguage(prefs.getString(KEY_MIC_LANGUAGE, null)),
             )
         }
