@@ -15,8 +15,25 @@ export interface OAuthRequestOptions {
 
 export const OAUTH_CONNECT_TOKEN_PATH = '/v1/oauth/connect-token';
 
-function oauthPath(providerId: string): string {
-  return `/v1/oauth/${encodeURIComponent(providerId)}`;
+/** Path templates pinned by protocol/respond.json; `{provider_id}` is substituted. */
+export const OAUTH_STATUS_PATH = '/v1/oauth/{provider_id}/status';
+export const OAUTH_START_PATH = '/v1/oauth/{provider_id}/start';
+export const OAUTH_DISCONNECT_PATH = '/v1/oauth/{provider_id}';
+
+function fillOAuthPath(template: string, providerId: string): string {
+  return template.replace('{provider_id}', encodeURIComponent(providerId));
+}
+
+function oauthStatusPath(providerId: string): string {
+  return fillOAuthPath(OAUTH_STATUS_PATH, providerId);
+}
+
+function oauthStartPath(providerId: string): string {
+  return fillOAuthPath(OAUTH_START_PATH, providerId);
+}
+
+function oauthDisconnectPath(providerId: string): string {
+  return fillOAuthPath(OAUTH_DISCONNECT_PATH, providerId);
 }
 
 interface ConnectTokenResponse {
@@ -47,7 +64,7 @@ export function buildOAuthStartUrl(
   baseUrl?: string,
 ): string {
   const params = new URLSearchParams({ connect_token: connectToken });
-  return resolveApiUrl(`${oauthPath(providerId)}/start?${params}`, baseUrl);
+  return resolveApiUrl(`${oauthStartPath(providerId)}?${params}`, baseUrl);
 }
 
 /** Reports OAuth connection state and scope coverage for the authenticated user. */
@@ -55,7 +72,7 @@ export async function getOAuthStatus(
   providerId: string,
   options: OAuthRequestOptions = {},
 ): Promise<OAuthStatusResponse> {
-  return fetchJson<OAuthStatusResponse>(`${oauthPath(providerId)}/status`, {
+  return fetchJson<OAuthStatusResponse>(oauthStatusPath(providerId), {
     signal: options.signal,
     baseUrl: options.baseUrl,
   });
@@ -66,7 +83,7 @@ export async function disconnectOAuth(
   providerId: string,
   options: OAuthRequestOptions = {},
 ): Promise<void> {
-  await fetchNoContent(oauthPath(providerId), {
+  await fetchNoContent(oauthDisconnectPath(providerId), {
     method: 'DELETE',
     signal: options.signal,
     baseUrl: options.baseUrl,

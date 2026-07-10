@@ -84,18 +84,44 @@ export function useConversationInput({
     handsFreeTranscriptRef.current = handsFree.handleTranscript;
   }, [handsFree.isOpen, handsFree.handleTranscript]);
 
+  // Fresh draft/transcript/listening for language restart without re-firing
+  // the effect when those values change — only resolvedLanguage is the trigger.
+  const languageRestartRef = useRef({
+    input,
+    transcript: handsFree.transcript,
+    isListening: voice.isListening,
+    isOpen: handsFree.isOpen,
+    stop: voice.stop,
+    clearError: voice.clearError,
+    start: voice.start,
+  });
+  languageRestartRef.current = {
+    input,
+    transcript: handsFree.transcript,
+    isListening: voice.isListening,
+    isOpen: handsFree.isOpen,
+    stop: voice.stop,
+    clearError: voice.clearError,
+    start: voice.start,
+  };
+
   // Restart dictation in place when the language changes mid-session, keeping
-  // whatever text the user already produced as the base.
-  const prevLanguageRef = useRef(resolvedLanguage);
+  // whatever text the user already produced as the base. Skip the initial
+  // mount; the ref also collapses Strict Mode's double-invoke into one restart.
+  const prevLanguageRef = useRef<string | null>(null);
   useEffect(() => {
     if (prevLanguageRef.current === resolvedLanguage) return;
+    const previous = prevLanguageRef.current;
     prevLanguageRef.current = resolvedLanguage;
-    if (!voice.isListening) return;
-    const base = handsFree.isOpen ? handsFree.transcript : input;
-    voice.stop({ abort: true });
-    voice.clearError();
-    voice.start(base);
-  });
+    if (previous === null) return;
+
+    const ctx = languageRestartRef.current;
+    if (!ctx.isListening) return;
+    const base = ctx.isOpen ? ctx.transcript : ctx.input;
+    ctx.stop({ abort: true });
+    ctx.clearError();
+    ctx.start(base);
+  }, [resolvedLanguage]);
 
   const submit = useCallback(() => {
     if (voice.isListening) voice.stop({ abort: true });

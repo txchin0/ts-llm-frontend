@@ -3,7 +3,6 @@ package app.ember.mobile.assist
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -35,36 +34,46 @@ class RespondProtocolTest {
     @Test
     fun `parses every event the overlay renders from the canonical samples`() {
         assertEquals(
-            RespondEvent.SessionStarted(event("start").getString("session_id")),
+            RespondParseResult.Rendered(
+                RespondEvent.SessionStarted(event("start").getString("session_id")),
+            ),
             RespondEvent.parse(event("start").toString()),
         )
         assertEquals(
-            RespondEvent.Delta(event("delta").getString("text")),
+            RespondParseResult.Rendered(RespondEvent.Delta(event("delta").getString("text"))),
             RespondEvent.parse(event("delta").toString()),
         )
         assertEquals(
-            RespondEvent.ToolActivity(event("tool_call").getString("tool_name")),
+            RespondParseResult.Rendered(
+                RespondEvent.ToolActivity(event("tool_call").getString("tool_name")),
+            ),
             RespondEvent.parse(event("tool_call").toString()),
         )
-        assertEquals(RespondEvent.Final, RespondEvent.parse(event("final").toString()))
         assertEquals(
-            RespondEvent.Error(event("error").getString("message")),
+            RespondParseResult.Rendered(RespondEvent.Final),
+            RespondEvent.parse(event("final").toString()),
+        )
+        assertEquals(
+            RespondParseResult.Rendered(RespondEvent.Error(event("error").getString("message"))),
             RespondEvent.parse(event("error").toString()),
         )
     }
 
     @Test
     fun `ignores the events the overlay does not render`() {
-        assertNull(RespondEvent.parse(event("thinking_delta").toString()))
-        assertNull(RespondEvent.parse(event("usage").toString()))
-        assertNull(RespondEvent.parse(event("tool_result").toString()))
+        assertEquals(RespondParseResult.Ignored, RespondEvent.parse(event("thinking_delta").toString()))
+        assertEquals(RespondParseResult.Ignored, RespondEvent.parse(event("usage").toString()))
+        assertEquals(RespondParseResult.Ignored, RespondEvent.parse(event("tool_result").toString()))
+        assertEquals(RespondParseResult.Ignored, RespondEvent.parse(""))
     }
 
     @Test
-    fun `ignores unknown types, blanks, and non-JSON payloads`() {
-        assertNull(RespondEvent.parse("""{"type":"audio","url":"x"}"""))
-        assertNull(RespondEvent.parse(""))
-        assertNull(RespondEvent.parse("not-json"))
+    fun `flags unknown types and non-JSON payloads as malformed`() {
+        val unknown = RespondEvent.parse("""{"type":"audio","url":"x"}""")
+        assertTrue(unknown is RespondParseResult.Malformed)
+
+        val garbage = RespondEvent.parse("not-json")
+        assertTrue(garbage is RespondParseResult.Malformed)
     }
 
     @Test

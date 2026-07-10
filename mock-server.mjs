@@ -354,9 +354,10 @@ async function handleRespond(req, res) {
     await sleep(200);
   }
 
-  sse(res, { ...events.tool_call, ...turn, tool_call_id: rid('call') });
+  const toolCallId = rid('call');
+  sse(res, { ...events.tool_call, ...turn, tool_call_id: toolCallId });
   await sleep(600);
-  sse(res, { ...events.tool_result, ...turn, tool_call_id: rid('call') });
+  sse(res, { ...events.tool_result, ...turn, tool_call_id: toolCallId });
   await sleep(250);
 
   const answer = [
@@ -386,60 +387,51 @@ async function handleRespond(req, res) {
 // Router
 // ---------------------------------------------------------------------------
 
+const oauthProvider = contract.oauthProviderSample;
+const fillOAuthPath = (template) => template.replace('{provider_id}', oauthProvider);
+
+const routes = new Map([
+  [`POST ${endpoints.respond}`, (req, res) => {
+    handleRespond(req, res).catch(() => {
+      try {
+        res.end();
+      } catch {
+        // already closed
+      }
+    });
+  }],
+  [`POST ${endpoints.authRegister}`, (req, res) => {
+    void handleRegister(req, res);
+  }],
+  [`POST ${endpoints.authLogin}`, (req, res) => {
+    void handleLogin(req, res);
+  }],
+  [`POST ${endpoints.authRefresh}`, (req, res) => {
+    void handleRefresh(req, res);
+  }],
+  [`POST ${endpoints.authLogout}`, (req, res) => {
+    void handleLogout(req, res);
+  }],
+  [`GET ${endpoints.tasks}`, handleTasksGet],
+  [`GET ${endpoints.integrations}`, handleIntegrationsGet],
+  [`PUT ${endpoints.integrations}`, (req, res) => {
+    void handleIntegrationsPut(req, res);
+  }],
+  [`POST ${endpoints.oauthConnectToken}`, handleConnectToken],
+  [`GET ${fillOAuthPath(endpoints.oauthStatus)}`, handleOAuthStatus],
+  [`GET ${fillOAuthPath(endpoints.oauthStart)}`, (req, res, url) => {
+    handleOAuthStart(req, res, url);
+  }],
+  [`DELETE ${fillOAuthPath(endpoints.oauthDisconnect)}`, handleOAuthDisconnect],
+]);
+
 const server = createServer((req, res) => {
   const url = req.url ?? '';
   const path = url.split('?')[0];
   const method = req.method ?? 'GET';
-
-  const route = `${method} ${path}`;
-  switch (route) {
-    case `POST ${endpoints.respond}`:
-      handleRespond(req, res).catch(() => {
-        try {
-          res.end();
-        } catch {
-          // already closed
-        }
-      });
-      return;
-    case `POST ${endpoints.authRegister}`:
-      void handleRegister(req, res);
-      return;
-    case `POST ${endpoints.authLogin}`:
-      void handleLogin(req, res);
-      return;
-    case `POST ${endpoints.authRefresh}`:
-      void handleRefresh(req, res);
-      return;
-    case `POST ${endpoints.authLogout}`:
-      void handleLogout(req, res);
-      return;
-    case `GET ${endpoints.tasks}`:
-      handleTasksGet(req, res);
-      return;
-    case `GET ${endpoints.integrations}`:
-      handleIntegrationsGet(req, res);
-      return;
-    case `PUT ${endpoints.integrations}`:
-      void handleIntegrationsPut(req, res);
-      return;
-    case `POST ${endpoints.oauthConnectToken}`:
-      handleConnectToken(req, res);
-      return;
-    default:
-      break;
-  }
-
-  if (method === 'GET' && path === '/v1/oauth/google/status') {
-    handleOAuthStatus(req, res);
-    return;
-  }
-  if (method === 'GET' && path === '/v1/oauth/google/start') {
-    handleOAuthStart(req, res, url);
-    return;
-  }
-  if (method === 'DELETE' && path === '/v1/oauth/google') {
-    handleOAuthDisconnect(req, res);
+  const handler = routes.get(`${method} ${path}`);
+  if (handler) {
+    handler(req, res, url);
     return;
   }
 

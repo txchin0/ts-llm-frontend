@@ -23,6 +23,19 @@ export class ApiHttpError extends Error {
   }
 }
 
+interface ApiErrorBody {
+  code: string;
+  message: string;
+}
+
+function isApiErrorBody(value: unknown): value is ApiErrorBody {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const body = value as { code?: unknown; message?: unknown };
+  return typeof body.code === 'string' && typeof body.message === 'string';
+}
+
 /**
  * The server encodes request failures as a JSON `{code, message}` body.
  * Decodes one failed response into an ApiHttpError, preferring the server's
@@ -33,11 +46,8 @@ export async function apiErrorFromResponse(response: Response): Promise<ApiHttpE
   let message: string | undefined;
   try {
     const body: unknown = await response.json();
-    if (typeof body === 'object' && body !== null) {
-      const { code, message: bodyMessage } = body as { code?: unknown; message?: unknown };
-      if (typeof code === 'string' && typeof bodyMessage === 'string') {
-        message = bodyMessage;
-      }
+    if (isApiErrorBody(body)) {
+      message = body.message;
     }
   } catch {
     // Non-JSON error body; the generic message carries the status.

@@ -6,8 +6,6 @@ import org.json.JSONObject
  * The overlay's view of a Respond SSE payload, decoded off the wire. Mirrors
  * the event vocabulary in src/api/types.ts; the canonical samples live in
  * protocol/respond.json and RespondProtocolTest replays them through [parse].
- * Events the overlay does not render (thinking_delta, usage, tool_result)
- * decode to null by design.
  */
 sealed interface RespondEvent {
     data class SessionStarted(val sessionId: String) : RespondEvent
@@ -17,27 +15,55 @@ sealed interface RespondEvent {
     data class Error(val message: String) : RespondEvent
 
     companion object {
-        /** Decode one SSE `data` payload; null = blank, unparseable, or not rendered. */
-        fun parse(payload: String): RespondEvent? {
-            if (payload.isBlank()) return null
+        /**
+         * Decode one SSE `data` payload.
+         * - [RespondParseResult.Rendered]: overlay should surface it
+         * - [RespondParseResult.Ignored]: blank, or a known type the overlay
+         *   does not render (thinking_delta, usage, tool_result)
+         * - [RespondParseResult.Malformed]: unparseable JSON or unknown type
+         */
+        fun parse(payload: String): RespondParseResult {
+            if (payload.isBlank()) return RespondParseResult.Ignored
             val json = try {
                 JSONObject(payload)
-            } catch (_: Exception) {
-                return null
+            } catch (e: Exception) {
+                return RespondParseResult.Malformed(
+                    "unparseable JSON: ${e.message ?: "unknown"}",
+                )
             }
-            return when (json.optString("type")) {
+            val type = json.optString("type")
+            return when (type) {
                 "start" -> json.optString("session_id").takeIf { it.isNotEmpty() }
-                    ?.let { SessionStarted(it) }
+                    ?.let { RespondParseResult.Rendered(SessionStarted(it)) }
+                    ?: RespondParseResult.Ignored
                 "delta" -> json.optString("text").takeIf { it.isNotEmpty() }
-                    ?.let { Delta(it) }
+                    ?.let { RespondParseResult.Rendered(Delta(it)) }
+                    ?: RespondParseResult.Ignored
                 "tool_call" -> json.optString("tool_name").takeIf { it.isNotEmpty() }
-                    ?.let { ToolActivity(it) }
-                "final" -> Final
-                "error" -> Error(json.optString("message").ifEmpty { "Agent error" })
-                else -> null
+                    ?.let { RespondParseResult.Rendered(ToolActivity(it)) }
+                    ?: RespondParseResult.Ignored
+                "final" -> RespondParseResult.Rendered(Final)
+                "error" -> RespondParseResult.Rendered(
+                    Error(json.optString("message").ifEmpty { "Agent error" }),
+                )
+                // Known types the overlay does not render.
+                "thinking_delta", "usage", "tool_result" -> RespondParseResult.Ignored
+                else -> RespondParseResult.Malformed(
+                    "unknown event type: ${type.ifEmpty { "(missing)" }}",
+                )
             }
         }
     }
+}
+
+/**
+ * Outcome of [RespondEvent.parse]. Callers must not treat [Malformed] like an
+ * intentional skip — that is wire corruption or an unknown vocabulary member.
+ */
+sealed interface RespondParseResult {
+    data class Rendered(val event: RespondEvent) : RespondParseResult
+    object Ignored : RespondParseResult
+    data class Malformed(val detail: String) : RespondParseResult
 }
 
 /**
