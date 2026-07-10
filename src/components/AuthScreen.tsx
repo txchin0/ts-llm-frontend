@@ -53,8 +53,10 @@ export function AuthScreen({
   const serverUrlInputId = useId();
 
   const showServerField = onServerUrlChange !== undefined;
+  const passwordOk =
+    mode === 'register' ? password.length >= 8 : password.length > 0;
   const canSubmit =
-    userId.trim().length > 0 && password.length > 0 && !isSubmitting;
+    userId.trim().length > 0 && passwordOk && !isSubmitting;
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();

@@ -9,6 +9,10 @@ describe('isRespondSseEvent', () => {
     expect(isRespondSseEvent({ type: 'delta', text: 'hello' })).toBe(true);
   });
 
+  it('accepts an empty delta text (valid no-op chunk)', () => {
+    expect(isRespondSseEvent({ type: 'delta', text: '' })).toBe(true);
+  });
+
   it('rejects known types that are missing required fields', () => {
     expect(isRespondSseEvent({ type: 'delta' })).toBe(false);
     expect(isRespondSseEvent({ type: 'start' })).toBe(false);

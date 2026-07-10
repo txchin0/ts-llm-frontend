@@ -39,7 +39,7 @@ export async function register(userId: string, password: string): Promise<AuthTo
     user_id: userId,
     password,
   });
-  setAuthTokens(tokens.access_token, tokens.refresh_token);
+  await setAuthTokens(tokens.access_token, tokens.refresh_token);
   return tokens;
 }
 
@@ -49,14 +49,14 @@ export async function login(userId: string, password: string): Promise<AuthToken
     user_id: userId,
     password,
   });
-  setAuthTokens(tokens.access_token, tokens.refresh_token);
+  await setAuthTokens(tokens.access_token, tokens.refresh_token);
   return tokens;
 }
 
 /** Revokes the refresh token server-side and clears the local session. */
 export async function logout(): Promise<void> {
   const refreshToken = getRefreshToken();
-  clearAuthTokens();
+  await clearAuthTokens();
   if (refreshToken === null) {
     return;
   }
@@ -76,6 +76,11 @@ let refreshInFlight: Promise<boolean> | null = null;
  * Exchanges the stored refresh token for a new pair. Single-flight: concurrent
  * 401s share one request. Returns false when no session can be established;
  * a definitive 401 from the server clears the stored tokens (signed out).
+ *
+ * On native, a rejected refresh re-reads Preferences before clearing: the
+ * voice assistant may have won a concurrent rotation and already stored a
+ * fresh pair. Clearing blindly would sign the WebView out of a still-valid
+ * session.
  */
 export function refreshAuthTokens(): Promise<boolean> {
   // Reset via .finally() rather than a finally block inside the IIFE: the
@@ -91,19 +96,27 @@ export function refreshAuthTokens(): Promise<boolean> {
 }
 
 async function runRefresh(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (refreshToken === null) {
+    return false;
+  }
   try {
-    const refreshToken = getRefreshToken();
-    if (refreshToken === null) {
-      return false;
-    }
     const tokens = await fetchJsonPublic<AuthTokensResponse>(AUTH_REFRESH_PATH, {
       refresh_token: refreshToken,
     });
-    setAuthTokens(tokens.access_token, tokens.refresh_token);
+    await setAuthTokens(tokens.access_token, tokens.refresh_token);
     return true;
   } catch (error) {
     if (error instanceof ApiHttpError && (error.status === 401 || error.status === 403)) {
-      clearAuthTokens();
+      if (Capacitor.isNativePlatform()) {
+        // Another process (assistant) may have rotated while we were in flight.
+        await bootstrapAuthTokens();
+        const adopted = getRefreshToken();
+        if (adopted !== null && adopted !== refreshToken) {
+          return getAccessToken() !== null;
+        }
+      }
+      await clearAuthTokens();
     }
     return false;
   }

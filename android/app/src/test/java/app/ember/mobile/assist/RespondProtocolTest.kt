@@ -91,8 +91,16 @@ class RespondProtocolTest {
             (incompleteStart as RespondParseResult.Malformed).detail,
         )
 
+        // Empty text is a valid no-op delta (aligned with isRespondSseEvent).
         val emptyDelta = RespondEvent.parse("""{"type":"delta","text":""}""")
-        assertTrue(emptyDelta is RespondParseResult.Malformed)
+        assertTrue(emptyDelta is RespondParseResult.Rendered)
+        assertEquals(
+            RespondEvent.Delta(""),
+            (emptyDelta as RespondParseResult.Rendered).event,
+        )
+
+        val missingDeltaText = RespondEvent.parse("""{"type":"delta"}""")
+        assertTrue(missingDeltaText is RespondParseResult.Malformed)
 
         val incompleteTool = RespondEvent.parse("""{"type":"tool_call"}""")
         assertTrue(incompleteTool is RespondParseResult.Malformed)

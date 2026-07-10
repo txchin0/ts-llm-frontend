@@ -89,7 +89,7 @@ afterEach(() => {
 
 describe('refreshAuthTokens', () => {
   it('exchanges the refresh token and stores the rotated pair', async () => {
-    setAuthTokens('a1', 'r1');
+    await setAuthTokens('a1', 'r1');
     const fetchMock = stubFetch(() => Promise.resolve(jsonResponse(200, refreshBody('a2', 'r2'))));
 
     await expect(refreshAuthTokens()).resolves.toBe(true);
@@ -102,7 +102,7 @@ describe('refreshAuthTokens', () => {
   });
 
   it('is single-flight: concurrent callers share one request', async () => {
-    setAuthTokens('a1', 'r1');
+    await setAuthTokens('a1', 'r1');
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {
       release = resolve;
@@ -121,7 +121,7 @@ describe('refreshAuthTokens', () => {
   });
 
   it('clears the session on a 401', async () => {
-    setAuthTokens('a1', 'r1');
+    await setAuthTokens('a1', 'r1');
     stubFetch(() => Promise.resolve(jsonResponse(401)));
 
     await expect(refreshAuthTokens()).resolves.toBe(false);
@@ -129,7 +129,7 @@ describe('refreshAuthTokens', () => {
   });
 
   it('clears the session on a 403', async () => {
-    setAuthTokens('a1', 'r1');
+    await setAuthTokens('a1', 'r1');
     stubFetch(() => Promise.resolve(jsonResponse(403)));
 
     await expect(refreshAuthTokens()).resolves.toBe(false);
@@ -137,7 +137,7 @@ describe('refreshAuthTokens', () => {
   });
 
   it('keeps the session on a 500 (transient failure)', async () => {
-    setAuthTokens('a1', 'r1');
+    await setAuthTokens('a1', 'r1');
     stubFetch(() => Promise.resolve(jsonResponse(500)));
 
     await expect(refreshAuthTokens()).resolves.toBe(false);
@@ -145,7 +145,7 @@ describe('refreshAuthTokens', () => {
   });
 
   it('keeps the session on a network error', async () => {
-    setAuthTokens('a1', 'r1');
+    await setAuthTokens('a1', 'r1');
     stubFetch(() => Promise.reject(new TypeError('offline')));
 
     await expect(refreshAuthTokens()).resolves.toBe(false);
@@ -165,15 +165,30 @@ describe('refreshAuthTokens', () => {
     stubFetch(() => Promise.resolve(jsonResponse(200, refreshBody('a2', 'r2'))));
 
     await expect(refreshAuthTokens()).resolves.toBe(false); // no token yet
-    setAuthTokens('a1', 'r1');
+    await setAuthTokens('a1', 'r1');
     await expect(refreshAuthTokens()).resolves.toBe(true);
     expect(getAccessToken()).toBe('a2');
+  });
+
+  it('adopts a natively-rotated pair when refresh loses the rotation race', async () => {
+    capacitor.native = true;
+    await setAuthTokens('a1', 'r1');
+    // Assistant already rotated and wrote the new pair to Preferences while
+    // our refresh request was in flight; the server rejects our stale token.
+    prefs.set(ACCESS_TOKEN_KEY, 'a-native');
+    prefs.set(REFRESH_TOKEN_KEY, 'r-native');
+    stubFetch(() => Promise.resolve(jsonResponse(401)));
+
+    await expect(refreshAuthTokens()).resolves.toBe(true);
+    expect(getAccessToken()).toBe('a-native');
+    expect(getRefreshToken()).toBe('r-native');
+    expect(hasSession()).toBe(true);
   });
 });
 
 describe('authFetch', () => {
   it('attaches the bearer token', async () => {
-    setAuthTokens('a1', 'r1');
+    await setAuthTokens('a1', 'r1');
     const fetchMock = stubFetch(() => Promise.resolve(jsonResponse(200)));
 
     await authFetch('/api/x');
@@ -182,7 +197,7 @@ describe('authFetch', () => {
   });
 
   it('refreshes once then retries on a 401', async () => {
-    setAuthTokens('a1', 'r1');
+    await setAuthTokens('a1', 'r1');
     const fetchMock = stubFetch((url, init) => {
       if (url === '/v1/auth/refresh') {
         return Promise.resolve(jsonResponse(200, refreshBody('a2', 'r2')));
@@ -200,7 +215,7 @@ describe('authFetch', () => {
   });
 
   it('returns the retried 401 as-is when refresh does not fix it', async () => {
-    setAuthTokens('a1', 'r1');
+    await setAuthTokens('a1', 'r1');
     stubFetch((url) =>
       Promise.resolve(
         url === '/v1/auth/refresh' ? jsonResponse(200, refreshBody('a2', 'r2')) : jsonResponse(401),

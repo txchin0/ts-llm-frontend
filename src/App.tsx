@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Capacitor } from '@capacitor/core';
 
@@ -69,9 +69,11 @@ function ChatApp({ auth, settings }: ChatAppProps) {
     pollIntervalMs: tasksExpanded ? 5_000 : 20_000,
   });
 
-  if (tasks.tasks.length === 0 && tasksExpanded) {
-    setTasksExpanded(false);
-  }
+  useEffect(() => {
+    if (tasks.tasks.length === 0 && tasksExpanded) {
+      setTasksExpanded(false);
+    }
+  }, [tasks.tasks.length, tasksExpanded]);
 
   const handleNewChat = useCallback(() => {
     reset();
