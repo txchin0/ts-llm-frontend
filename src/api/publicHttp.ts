@@ -1,5 +1,5 @@
 import { resolveApiUrl } from './config.ts';
-import { apiErrorFromResponse, ApiHttpError } from './errors.ts';
+import { apiErrorFromResponse, readJsonOrThrow } from './errors.ts';
 
 /**
  * Unauthenticated JSON POST (register / login / refresh / logout). Same URL
@@ -17,15 +17,5 @@ export async function fetchJsonPublic<T>(path: string, json: unknown, baseUrl?: 
     throw await apiErrorFromResponse(response);
   }
 
-  try {
-    return (await response.json()) as T;
-  } catch {
-    const contentType = response.headers?.get?.('content-type') ?? undefined;
-    const detail = contentType ? ` (received ${contentType})` : '';
-    throw new ApiHttpError(
-      response.status,
-      response.statusText,
-      `The agent server did not return JSON${detail}. Check that the Server URL in Settings points at the agent server.`,
-    );
-  }
+  return readJsonOrThrow<T>(response);
 }

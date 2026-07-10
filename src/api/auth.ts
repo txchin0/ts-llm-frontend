@@ -120,13 +120,11 @@ async function runRefresh(): Promise<boolean> {
 export async function authFetch(url: string, init: RequestInit = {}): Promise<Response> {
   const attempt = (): Promise<Response> => {
     const token = getAccessToken();
-    return fetch(url, {
-      ...init,
-      headers: {
-        ...(init.headers as Record<string, string> | undefined),
-        ...(token !== null ? { authorization: `Bearer ${token}` } : {}),
-      },
-    });
+    const headers = new Headers(init.headers);
+    if (token !== null) {
+      headers.set('authorization', `Bearer ${token}`);
+    }
+    return fetch(url, { ...init, headers });
   };
 
   const response = await attempt();
