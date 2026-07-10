@@ -21,8 +21,9 @@ import org.json.JSONObject
  * Refreshes are single-flight: concurrent 401s queue on the lock and reuse
  * the token the winning thread stored. The rotated pair is written back to
  * the shared [AuthTokenStore] so the web app picks it up; a definitive
- * 401/403 from the refresh endpoint clears the store (signed out everywhere),
- * while transient failures leave it untouched.
+ * 401/403 from the refresh endpoint re-reads the store first (the WebView
+ * may have won a concurrent rotation) and only then clears on a true reject.
+ * Transient failures leave the store untouched.
  */
 class TokenAuthenticator(
     private val baseUrl: String,
@@ -72,9 +73,20 @@ class TokenAuthenticator(
                         access
                     }
                     resp.code == 401 || resp.code == 403 -> {
-                        Log.w(TAG, "refresh token rejected (${resp.code}); clearing session")
-                        tokens.clear()
-                        null
+                        // The WebView may have won a concurrent rotation and
+                        // already written a fresh pair to the shared store.
+                        // Re-read before clearing so we do not sign out of a
+                        // still-valid session.
+                        val adopted = tokens.refreshToken
+                        val access = tokens.accessToken
+                        if (adopted != null && adopted != refreshToken && access != null) {
+                            Log.i(TAG, "adopted refresh rotated by another process")
+                            access
+                        } else {
+                            Log.w(TAG, "refresh token rejected (${resp.code}); clearing session")
+                            tokens.clear()
+                            null
+                        }
                     }
                     else -> {
                         Log.w(TAG, "token refresh failed (${resp.code})")

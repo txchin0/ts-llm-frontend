@@ -37,9 +37,13 @@ sealed interface RespondEvent {
                 "start" -> json.optString("session_id").takeIf { it.isNotEmpty() }
                     ?.let { RespondParseResult.Rendered(SessionStarted(it)) }
                     ?: RespondParseResult.Malformed("incomplete start event")
-                "delta" -> json.optString("text").takeIf { it.isNotEmpty() }
-                    ?.let { RespondParseResult.Rendered(Delta(it)) }
-                    ?: RespondParseResult.Malformed("incomplete delta event")
+    // Empty text is valid (no-op append); missing/null text is not.
+    // Aligned with TypeScript isRespondSseEvent (string, including "").
+    "delta" -> if (json.has("text") && !json.isNull("text")) {
+        RespondParseResult.Rendered(Delta(json.optString("text")))
+    } else {
+        RespondParseResult.Malformed("incomplete delta event")
+    }
                 "tool_call" -> json.optString("tool_name").takeIf { it.isNotEmpty() }
                     ?.let { RespondParseResult.Rendered(ToolActivity(it)) }
                     ?: RespondParseResult.Malformed("incomplete tool_call event")

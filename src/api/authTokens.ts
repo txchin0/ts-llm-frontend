@@ -11,6 +11,10 @@ import { Preferences } from '@capacitor/preferences';
  * At startup {@link bootstrapAuthTokens} copies the Preferences pair back into
  * localStorage, so a rotation performed natively while the WebView was closed
  * wins over the stale local copy.
+ *
+ * On native, localStorage + Preferences mutations share a lock with bootstrap
+ * so a visibilitychange read cannot observe an empty Preferences store mid-
+ * mirror and wipe a fresh login.
  */
 
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '../native/handshake.ts';
@@ -20,6 +24,15 @@ export { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY };
 type AuthChangeListener = () => void;
 
 const listeners = new Set<AuthChangeListener>();
+
+/** Serializes native Preferences mirrors with bootstrap reads. */
+let authStoreLock: Promise<void> = Promise.resolve();
+
+function withAuthStoreLock(work: () => Promise<void>): Promise<void> {
+  const run = authStoreLock.then(work, work);
+  authStoreLock = run.catch(() => {});
+  return run;
+}
 
 function notify(): void {
   for (const listener of listeners) {
@@ -54,32 +67,60 @@ export function hasSession(): boolean {
   return getAccessToken() !== null || getRefreshToken() !== null;
 }
 
-/** Persists a token pair locally and mirrors it to the native store. */
-export function setAuthTokens(accessToken: string, refreshToken: string): void {
+function writeLocalPair(accessToken: string, refreshToken: string): void {
   try {
     localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
     localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
   } catch {
     // Storage unavailable; the session just won't survive a reload.
   }
-  if (Capacitor.isNativePlatform()) {
-    void Preferences.set({ key: ACCESS_TOKEN_KEY, value: accessToken }).catch(() => {});
-    void Preferences.set({ key: REFRESH_TOKEN_KEY, value: refreshToken }).catch(() => {});
-  }
-  notify();
 }
 
-/** Clears the session everywhere (logout or a definitively rejected refresh). */
-export function clearAuthTokens(): void {
+function clearLocalPair(): void {
   try {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
   } catch {
     // Storage unavailable; nothing to clear.
   }
+}
+
+/** Persists a token pair locally and mirrors it to the native store. */
+export async function setAuthTokens(accessToken: string, refreshToken: string): Promise<void> {
   if (Capacitor.isNativePlatform()) {
-    void Preferences.remove({ key: ACCESS_TOKEN_KEY }).catch(() => {});
-    void Preferences.remove({ key: REFRESH_TOKEN_KEY }).catch(() => {});
+    await withAuthStoreLock(async () => {
+      writeLocalPair(accessToken, refreshToken);
+      try {
+        await Promise.all([
+          Preferences.set({ key: ACCESS_TOKEN_KEY, value: accessToken }),
+          Preferences.set({ key: REFRESH_TOKEN_KEY, value: refreshToken }),
+        ]);
+      } catch {
+        // Preferences unavailable; localStorage still holds the pair.
+      }
+    });
+  } else {
+    writeLocalPair(accessToken, refreshToken);
+  }
+  notify();
+}
+
+/** Clears the session everywhere (logout or a definitively rejected refresh). */
+export async function clearAuthTokens(): Promise<void> {
+  if (Capacitor.isNativePlatform()) {
+    await withAuthStoreLock(async () => {
+      clearLocalPair();
+      try {
+        await Promise.all([
+          Preferences.remove({ key: ACCESS_TOKEN_KEY }),
+          Preferences.remove({ key: REFRESH_TOKEN_KEY }),
+        ]);
+      } catch {
+        // Preferences unavailable; localStorage is already cleared.
+      }
+    });
+  } else {
+    clearLocalPair();
   }
   notify();
 }
@@ -94,27 +135,27 @@ export async function bootstrapAuthTokens(): Promise<void> {
     return;
   }
 
-  try {
-    const [access, refresh] = await Promise.all([
-      Preferences.get({ key: ACCESS_TOKEN_KEY }),
-      Preferences.get({ key: REFRESH_TOKEN_KEY }),
-    ]);
+  await withAuthStoreLock(async () => {
+    try {
+      const [access, refresh] = await Promise.all([
+        Preferences.get({ key: ACCESS_TOKEN_KEY }),
+        Preferences.get({ key: REFRESH_TOKEN_KEY }),
+      ]);
 
-    const nativeAccess = access.value?.trim() ?? '';
-    const nativeRefresh = refresh.value?.trim() ?? '';
+      const nativeAccess = access.value?.trim() ?? '';
+      const nativeRefresh = refresh.value?.trim() ?? '';
 
-    if (nativeAccess !== '' && nativeRefresh !== '') {
-      localStorage.setItem(ACCESS_TOKEN_KEY, nativeAccess);
-      localStorage.setItem(REFRESH_TOKEN_KEY, nativeRefresh);
-    } else {
-      // Empty (cleared natively — refresh token revoked) or a partial pair
-      // (corruption / interrupted write): treat as signed out rather than
-      // leaving the WebView with a half-valid session.
-      localStorage.removeItem(ACCESS_TOKEN_KEY);
-      localStorage.removeItem(REFRESH_TOKEN_KEY);
+      if (nativeAccess !== '' && nativeRefresh !== '') {
+        writeLocalPair(nativeAccess, nativeRefresh);
+      } else {
+        // Empty (cleared natively — refresh token revoked) or a partial pair
+        // (corruption / interrupted write): treat as signed out rather than
+        // leaving the WebView with a half-valid session.
+        clearLocalPair();
+      }
+    } catch {
+      // Preferences unavailable; keep whatever localStorage has.
     }
-    notify();
-  } catch {
-    // Preferences unavailable; keep whatever localStorage has.
-  }
+  });
+  notify();
 }
