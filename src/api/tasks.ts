@@ -1,6 +1,7 @@
+import { TASKS_PATH } from './endpoints.ts';
 import { fetchJson } from './http.ts';
 
-export const TASKS_PATH = '/v1/tasks';
+export { TASKS_PATH } from './endpoints.ts';
 
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed';
 

@@ -5,19 +5,14 @@ import { isRespondSseEvent } from './types.ts';
 import { collectAsync, createSseResponse } from '../test/helpers.ts';
 
 describe('isRespondSseEvent', () => {
-  const knownTypes = [
-    'start',
-    'delta',
-    'thinking_delta',
-    'final',
-    'usage',
-    'tool_call',
-    'tool_result',
-    'error',
-  ] as const;
+  it('accepts a well-formed delta', () => {
+    expect(isRespondSseEvent({ type: 'delta', text: 'hello' })).toBe(true);
+  });
 
-  it.each(knownTypes)('accepts known type %s', (type) => {
-    expect(isRespondSseEvent({ type })).toBe(true);
+  it('rejects known types that are missing required fields', () => {
+    expect(isRespondSseEvent({ type: 'delta' })).toBe(false);
+    expect(isRespondSseEvent({ type: 'start' })).toBe(false);
+    expect(isRespondSseEvent({ type: 'error', request_id: 'r1' })).toBe(false);
   });
 
   it('rejects null and missing type', () => {

@@ -102,7 +102,7 @@ class TokenAuthenticator(
     }
 
     companion object {
-        /** Contract-tested against protocol/respond.json (endpoints.authRefresh). */
+        /** Contract-tested against protocol/endpoints.json (authRefresh). */
         internal const val REFRESH_PATH = "/v1/auth/refresh"
         private const val TAG = "EmberAssist"
     }

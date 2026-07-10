@@ -2,6 +2,8 @@ import { authFetch } from './auth.ts';
 import { resolveApiUrl } from './config.ts';
 import { apiErrorFromResponse, ApiHttpError } from './errors.ts';
 
+export { fetchJsonPublic } from './publicHttp.ts';
+
 /**
  * The one authenticated JSON request path. Endpoint modules declare a path
  * and a response shape; everything else happens here: base-URL resolution,

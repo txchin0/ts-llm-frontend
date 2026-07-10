@@ -14,7 +14,18 @@ const speech = vi.hoisted(() => ({
 
 vi.mock('../voice/useSpeechInput.ts', () => ({
   useSpeechInput: (options: UseSpeechInputOptions) => {
+    const previousLanguage = speech.options?.language;
     speech.options = options;
+    // Mirror useSpeechInput's language-restart ownership for wiring tests.
+    if (
+      previousLanguage !== undefined &&
+      previousLanguage !== options.language &&
+      speech.isListening
+    ) {
+      speech.stop({ abort: true });
+      speech.clearError();
+      speech.start(options.getDictationBase?.() ?? '');
+    }
     return {
       supported: true,
       isListening: speech.isListening,
@@ -117,7 +128,7 @@ describe('useConversationInput', () => {
     expect(speech.start).not.toHaveBeenCalled();
   });
 
-  it('restarts dictation from the draft when the language changes mid-session', () => {
+  it('passes getDictationBase so speech can restart from the draft', () => {
     const { result, rerender } = renderConversation('en-US');
 
     act(() => {
@@ -133,7 +144,7 @@ describe('useConversationInput', () => {
     expect(speech.start).toHaveBeenCalledWith('halfway through');
   });
 
-  it('restarts dictation from the hands-free transcript when the overlay is open', () => {
+  it('passes getDictationBase so speech can restart from the hands-free transcript', () => {
     const { result, rerender } = renderConversation('en-US');
 
     act(() => {

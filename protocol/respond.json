@@ -1,34 +1,10 @@
 {
-  "$comment": "Canonical contract for the ts-llm Respond wire protocol. Single source for every client spelling: src/api/* (TypeScript, checked by src/api/respondProtocol.test.ts), the native assistant (Kotlin, checked by android/app/src/test/.../RespondProtocolTest.kt), and mock-server.mjs (which serves these samples). Change the protocol here first; the tests on each side fail until that side catches up.",
-  "endpoints": {
-    "respond": "/v1/respond",
-    "authRegister": "/v1/auth/register",
-    "authLogin": "/v1/auth/login",
-    "authRefresh": "/v1/auth/refresh",
-    "authLogout": "/v1/auth/logout",
-    "tasks": "/v1/tasks",
-    "integrations": "/v1/integrations",
-    "oauthConnectToken": "/v1/oauth/connect-token",
-    "oauthStatus": "/v1/oauth/{provider_id}/status",
-    "oauthStart": "/v1/oauth/{provider_id}/start",
-    "oauthDisconnect": "/v1/oauth/{provider_id}"
-  },
-  "oauthProviderSample": "google",
+  "$comment": "Canonical contract for the ts-llm Respond SSE wire protocol. TypeScript (src/api/respondProtocol.test.ts), Kotlin (RespondProtocolTest.kt), and mock-server.mjs all consume these samples. API paths live in endpoints.json — keep this file about the stream.",
   "respondAccept": "text/event-stream",
   "request": {
     "message": "What's on my calendar today?",
     "session_id": "sess_fixture01",
     "show_thinking": true
-  },
-  "authRefreshRequest": {
-    "refresh_token": "rt_fixture_1"
-  },
-  "authTokensResponse": {
-    "user_id": "user_fixture",
-    "token_type": "Bearer",
-    "access_token": "at_fixture_2",
-    "expires_in": 900,
-    "refresh_token": "rt_fixture_2"
   },
   "events": {
     "start": {
