@@ -9,7 +9,17 @@ installable **PWA** and as a **Capacitor Android app**. The Android app can also
 phone's **digital assistant**: the assist gesture opens a native voice overlay that talks to
 your own agent server.
 
-<!-- TODO: add a screenshot or GIF of the chat UI and the assistant overlay -->
+![Ember streaming a reply: thinking, tool calls, and a background task](docs/media/demo.gif)
+
+<table>
+  <tr>
+    <td width="40%"><img src="docs/media/chat-light.png" alt="Chat in the light theme"></td>
+    <td width="40%"><img src="docs/media/tasks-dark.png" alt="Background tasks panel in the dark theme"></td>
+    <td width="20%"><img src="docs/media/mobile-dark.png" alt="Chat on a phone-sized screen"></td>
+  </tr>
+</table>
+
+<sub>Captured against the bundled mock server with a scripted demo conversation.</sub>
 
 ## Features
 
