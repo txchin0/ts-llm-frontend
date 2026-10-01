@@ -2,6 +2,13 @@
   "name": "ts-llm-frontend",
   "private": true,
   "version": "0.1.0",
+  "description": "Ember: a streaming chat client for the pi-llm agent server, shipped as a PWA and a Capacitor Android app with a native voice-assistant overlay.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/txchin0/ts-llm-frontend.git"
+  },
+  "keywords": ["llm", "chat", "react", "capacitor", "android", "pwa", "sse"],
   "type": "module",
   "scripts": {
     "dev": "vite",

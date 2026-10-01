@@ -14,3 +14,11 @@ logs
 
 # TypeScript incremental build cache (tsc -b)
 *.tsbuildinfo
+
+# Local AI-tooling skills and their output
+.cursor/
+.claude/
+.impeccable/
+
+# Android Studio project settings
+android/.idea/

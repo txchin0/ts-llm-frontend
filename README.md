@@ -1,236 +1,180 @@
-# Ember · ts-llm frontend
+# Ember
 
-A warm, mobile-friendly web chat client for the [ts-llm](../ts-llm) agent
-server. It streams the agent's normal output and its reasoning ("thinking")
-separately, surfaces tool calls, lets you switch the `user_id` you speak as,
-supports hands-free voice input, and has light/dark themes. It never stores
-conversations.
+[![CI](https://github.com/txchin0/ts-llm-frontend/actions/workflows/ci.yml/badge.svg)](https://github.com/txchin0/ts-llm-frontend/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Built with React + TypeScript + Vite. UI designed via the impeccable workflow
-(see [PRODUCT.md](PRODUCT.md) and [DESIGN.md](DESIGN.md)).
+Ember is the chat client for [pi-llm](https://github.com/txchin0/pi-llm), a self-hosted
+personal-assistant backend that runs on local LLMs. A single React codebase ships as an
+installable **PWA** and as a **Capacitor Android app**. The Android app can also replace the
+phone's **digital assistant**: the assist gesture opens a native voice overlay that talks to
+your own agent server.
+
+<!-- TODO: add a screenshot or GIF of the chat UI and the assistant overlay -->
 
 ## Features
 
-- Streaming responses over Server-Sent Events (`POST /v1/respond`).
-- Distinct rendering of normal output (markdown) and reasoning (a collapsible
-  mono "Thinking" panel), plus expandable tool-call/result chips.
-- Change `user_id` at any time (switching starts a fresh session).
-- Voice input via the Web Speech API: dictate into the composer, then review
-  and send. Gracefully hidden where unsupported.
-- Light / dark / system themes (defaults to your OS preference).
-- No conversation persistence. Only your `user_id` and theme preference are
-  saved (in `localStorage`).
-- Responsive and touch-friendly; safe-area aware on phones.
-- Installable as a PWA (Add to Home Screen). Offline shell only — chat still
-  needs a live `/v1` connection to the agent server.
-- Packages as a native **Android app** via Capacitor — see
-  [Android app (Capacitor)](#android-app-capacitor).
+- **Streaming chat over SSE.** Answers render as markdown while they stream. The model's
+  reasoning appears in a collapsible "Thinking" panel, and tool calls and results show up
+  as expandable chips.
+- **Background tasks.** A tasks panel shows the work the agent has deferred to its worker,
+  with live status and recent results. Finished tasks can be dismissed.
+- **Integrations.** Users can turn integrations (web search, Google Calendar, Google Tasks)
+  on or off, and connect Google accounts through an OAuth flow.
+- **Accounts.** Password sign-in, with bearer access tokens and rotating refresh tokens.
+- **Voice.** Dictation in the composer and a hands-free conversation mode. Both use the
+  Web Speech API in browsers and a native speech plugin on Android, behind one engine
+  interface.
+- **Android assistant overlay.** A fully native Kotlin implementation, without a WebView:
+  an animated flame reacts to your voice, the reply streams above it, and the mic re-arms
+  for follow-ups. See [docs/android-assistant.md](docs/android-assistant.md).
+- **Polish.** Light, dark and system themes, safe areas on phones, an installable PWA, and
+  no conversation persistence.
 
-## Prerequisites
+## Architecture
 
-- Node.js 20+ (developed on 22).
-- A running ts-llm agent server (default `http://127.0.0.1:3000`). See the
-  ts-llm repo for its own setup (it needs Postgres and provider credentials).
+```mermaid
+flowchart LR
+  subgraph Clients
+    Web["React app<br/>(browser / PWA)"]
+    Native["Capacitor Android app<br/>(same React bundle)"]
+    Assist["Native assistant overlay<br/>(Kotlin, OkHttp SSE)"]
+  end
 
-## How it talks to the server
+  Proto[["protocol/*.json<br/>shared contract fixtures"]]
 
-The ts-llm server has no CORS, so the **web** build reaches it on the **same
-origin** — it never calls the agent cross-origin. Instead:
+  Web -- "same-origin /v1<br/>(Vite proxy / proxy.mjs)" --> Server["pi-llm agent server"]
+  Native -- "direct /v1 + CORS" --> Server
+  Assist -- "direct /v1 + bearer refresh" --> Server
+  Native <-. "settings and tokens<br/>via Capacitor Preferences" .-> Assist
 
-- In development, Vite proxies `/v1` to the agent server.
-- In production, `proxy.mjs` serves the built app and reverse-proxies `/v1`.
+  Proto -. verifies .-> Web & Assist
+  Proto -. drives .-> Mock["mock-server.mjs"]
+```
 
-For the web build the ts-llm server is never modified. The **Android app** is
-different: it has no proxy and calls the server directly, so the server must
-send CORS headers — see [Android app (Capacitor)](#android-app-capacitor) and
-the handoff doc [`docs/android-cors-handoff.md`](docs/android-cors-handoff.md).
+### Contract fixtures
 
-The API base URL is resolved in [`src/api/config.ts`](src/api/config.ts):
-empty = same origin (web); on Android the user sets an absolute server URL in
-**Settings → Agent server**, persisted in `localStorage`.
+The wire protocol is written three times: TypeScript for the web, Kotlin for the
+assistant overlay, and the mock server. These copies used to drift apart. Now the
+canonical spelling lives in [`protocol/`](protocol) as JSON fixtures covering endpoints,
+SSE event vocabulary and the web↔native handshake:
 
-## Development
+- the web app imports its path constants straight from the JSON;
+- the mock server is driven by the same fixtures;
+- Kotlin unit tests fail if their local constants differ from the fixtures.
+
+To change the protocol, edit the fixture first, and the failing tests show every side
+that needs updating.
+
+### Notes
+
+- **Web↔native handshake.** The web app mirrors the server URL, mic language and token
+  pair into Capacitor Preferences. The native assistant reads them from the same store, and
+  writes rotated tokens back after a refresh, so both clients stay signed in without racing
+  each other.
+- **Speech engine strategy.** `SpeechInputEngine` hides the browser and native recognizers behind
+  one interface, which handles transcript accumulation and keep-alive restarts.
+- **Pure streaming reducer.** SSE events are folded into the transcript by a pure,
+  unit-tested reducer (`chatStreamReducer.ts`), which keeps React state handling simple.
+
+## Tech stack
+
+React 19 · TypeScript · Vite · CSS Modules · Server-Sent Events · Capacitor 8 · Kotlin
+(Android voice interaction service) · OkHttp · vite-plugin-pwa · Vitest + Testing Library ·
+ESLint
+
+## Getting started
+
+**Prerequisites:** Node.js 22 or later, and a running [pi-llm](https://github.com/txchin0/pi-llm)
+server (default `http://127.0.0.1:3000`). You can use the bundled mock server instead
+(see below).
 
 ```bash
 npm install
-cp .env.example .env   # optional; only needed to change the proxy target
-npm run dev
+cp .env.example .env   # optional; set VITE_TS_LLM_TARGET to point at your server
+npm run dev            # http://localhost:5173
 ```
 
-Then open the printed Local URL (e.g. `http://localhost:5173`).
+In development, Vite proxies `/v1` to the agent server. The dev server binds to all
+interfaces, so you can open the printed Network URL on a phone on the same network.
 
-Set the agent server location with `VITE_TS_LLM_TARGET` (defaults to
-`http://127.0.0.1:3000`):
+### Without the backend (mock server)
 
-```bash
-# .env
-VITE_TS_LLM_TARGET=http://127.0.0.1:3000
-```
-
-### Testing on a phone (same Wi-Fi)
-
-The dev server binds to all interfaces, so open the printed **Network** URL
-(e.g. `http://192.168.0.12:5173`) on your phone. If the agent server runs on a
-different machine than this dev server, point the proxy at it:
-
-```bash
-VITE_TS_LLM_TARGET=http://<agent-host>:3000 npm run dev
-```
-
-### Develop without the full backend (mock server)
-
-ts-llm needs Postgres and provider keys. To work on the frontend without that,
-a tiny mock of `POST /v1/respond` is included. It emits a representative
-sequence (start, thinking, a tool round-trip, a markdown answer, usage, final):
+[`mock-server.mjs`](mock-server.mjs) implements the real auth model (register, login,
+refresh rotation, 401s) and streams representative turns from the protocol fixtures:
 
 ```bash
 node mock-server.mjs                                   # terminal 1 (port 3001)
 VITE_TS_LLM_TARGET=http://127.0.0.1:3001 npm run dev   # terminal 2
 ```
 
-The mock is a dev aid only; it is not a real agent.
+## Android app
 
-## PWA (installable web app)
-
-Ember can be installed on phones and desktops (Add to Home Screen / Install).
-
-- **Manifest** — [`src/brand.ts`](src/brand.ts) is the single source for product
-  metadata and PWA manifest fields. `vite-plugin-pwa` emits the manifest at
-  dev/build time; edit `pwaManifest` there, not in `vite.config.ts`.
-- **Service worker** — `vite-plugin-pwa` registers with `autoUpdate` so new
-  builds replace the cached app shell on the next visit. Disabled in the native
-  (Capacitor) build via `VITE_NATIVE_BUILD=true`, since a service worker caching
-  the local WebView origin is pointless and can serve stale assets.
-- **API traffic** — the service worker does not cache `/v1`; chat requests still
-  go to the agent server (proxied in dev and production).
-- **Theme** — install splash uses the dark brand shell (`#191512`, matching the
-  icon). After load, `theme-color` tracks your resolved light/dark preference.
-- **Production** — `npm run serve` (`proxy.mjs`) serves `dist/` including the
-  manifest, icons, and generated `sw.js`.
-- **Icons** — PNGs in `public/` can be recompressed after replacement with
-  `npm run compress:icons`.
-
-## Android app (Capacitor)
-
-The same web build runs as a native Android app via [Capacitor](https://capacitorjs.com).
-The WebView loads the bundled `dist/`; there is no proxy, so the app talks to
-the agent server directly over the LAN.
-
-### One-time setup
-
-Requires **Android Studio + JDK 17 + the Android SDK** (Capacitor's toolchain).
-The `android/` project is committed, so on a fresh clone just:
+Requires Android Studio, JDK 21, and the Android SDK. The `android/` project is
+committed.
 
 ```bash
-npm install
-npm run cap:sync     # builds the native web bundle and copies it into android/
-npm run cap:open     # opens the project in Android Studio to Build/Run
+npm run cap:sync   # native web build (no service worker) + cap sync
+npm run cap:open   # open in Android Studio to build and run
 ```
 
-Scripts (in `package.json`):
+In the app, set **Settings → Agent server** to `http://<server-lan-ip>:3000`. The WebView
+calls the server directly from origin `http://localhost`, so pi-llm must allow that origin
+(`CORS_ALLOWED_ORIGINS`). `CapacitorHttp` stays disabled because it can't stream responses.
 
-| Script | Purpose |
-| --- | --- |
-| `build:native` | `vite build` with `VITE_NATIVE_BUILD=true` (no service worker) |
-| `cap:sync` | `build:native` then `cap sync android` |
-| `cap:open` | open the Android project in Android Studio |
-| `cap:run` | sync then `cap run android` on a connected device/emulator |
+To use the assistant overlay, pick Ember under **Settings → Apps → Default apps → Digital
+assistant app**, and sign in to the app once. See
+[docs/android-assistant.md](docs/android-assistant.md) for details.
 
-### Connecting to the agent server
+**Known gap:** the OAuth "Connect" button opens the system browser, but returning to the
+app isn't wired up yet (deep links are still to do).
 
-1. Run the device/emulator on the **same LAN** as the ts-llm server.
-2. In the app: **Settings → Agent server → Server URL** → `http://<server-lan-ip>:3000`.
-   (Blank means "same origin" and only works for the web build.)
-3. The server **must send CORS headers** for the WebView origin `http://localhost`.
-   Hand [`docs/android-cors-handoff.md`](docs/android-cors-handoff.md) to the
-   pi-llm team. Without it, every `/v1` call fails.
-
-Config lives in [`capacitor.config.ts`](capacitor.config.ts): the WebView uses
-the `http` scheme with cleartext enabled (plain-HTTP LAN target), and
-`CapacitorHttp` is left **disabled** — that's required, because it can't stream
-responses and would break SSE chat. Debug with `chrome://inspect`.
-
-### Known gaps (native)
-
-- **Voice input** — the Web Speech API isn't available in Android WebView, so the
-  mic shows as unsupported. Restoring it needs a native speech plugin (later phase).
-- **OAuth integrations** — "Connect" opens the system browser, but the return
-  into the app isn't wired yet (needs deep links; later phase). Chat, tasks, and
-  integration toggles work.
-
-## Production
+## Production (web)
 
 ```bash
-npm run build      # type-checks and builds to dist/
-npm run serve      # serves dist/ and proxies /v1 to the agent server
+npm run build   # type-check + build to dist/
+npm run serve   # serves dist/ and reverse-proxies /v1 (PORT, HOST, TS_LLM_TARGET)
 ```
 
-`npm run serve` (i.e. `node proxy.mjs`) is configured via env:
-
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `PORT` | `8080` | Port this server listens on |
-| `HOST` | `0.0.0.0` | Bind address (`0.0.0.0` = reachable on the LAN) |
-| `TS_LLM_TARGET` | `http://127.0.0.1:3000` | The agent server to proxy `/v1` to |
-
-If you prefer your own reverse proxy (nginx, Caddy), serve `dist/` as static
-files and forward `/v1` to the agent server with buffering disabled so SSE
-streams in real time. Example nginx location:
+You can use your own reverse proxy instead. In that case, serve `dist/` statically and
+forward `/v1` with buffering disabled so SSE streams in real time:
 
 ```nginx
 location /v1/ {
     proxy_pass http://127.0.0.1:3000;
     proxy_http_version 1.1;
     proxy_set_header Connection "";
-    proxy_buffering off;        # required for SSE
+    proxy_buffering off;
     proxy_read_timeout 1h;
 }
 ```
 
-## API contract (reference)
+## Testing
 
-Single endpoint, `POST /v1/respond`, request body:
-
-```jsonc
-{
-  "user_id": "web-user",        // required
-  "message": "hello",           // required
-  "session_id": "sess_...",     // omit on the first turn; reuse after
-  "show_thinking": true          // opt in to reasoning events
-}
+```bash
+npm test                        # web unit + component tests (Vitest)
+npm run lint
+android/gradlew -p android test # Kotlin unit + contract tests
 ```
-
-The response is `text/event-stream`. Event types handled: `start` (carries the
-server-issued `session_id`), `delta`, `thinking_delta`, `tool_call`,
-`tool_result`, `usage`, `final`, `error`. Types live in
-[`src/api/types.ts`](src/api/types.ts); the streaming client is in
-[`src/api/client.ts`](src/api/client.ts).
-
-## Future: voice playback from the server
-
-The server's TTS is internal-only today (no audio HTTP endpoint). The frontend
-is prepared for it: the SSE client surfaces unknown events instead of dropping
-them, and the assistant message model reserves an `audioUrl` field. When ts-llm
-exposes audio (a new `audio` SSE event or a separate stream), playback can be
-wired in without reworking the transport or message model.
 
 ## Project structure
 
 ```
 src/
-  api/        SSE types + streaming client; config.ts resolves the base URL
-  state/      useChat (in-memory transcript), useSettings (userId, theme, server URL)
-  voice/      Web Speech API dictation hook
-  components/ Header, Transcript, Message, ThinkingPanel, ToolChip,
-              Composer, UserIdDialog, SettingsDialog, icons
-  styles/     design tokens + global styles
-  brand.ts    product name, description, PWA manifest source
-PRODUCT.md    strategy / register (impeccable)
-DESIGN.md     visual system: palette, type, motion (impeccable)
-docs/         backend handoff docs (OAuth, Android CORS)
-public/       favicon, PWA icons
-capacitor.config.ts  native Android app config (Capacitor)
-android/      generated Capacitor Android project (committed)
-proxy.mjs     production static + /v1 reverse proxy
-mock-server.mjs  dev-only mock of POST /v1/respond
+  api/         HTTP + SSE clients, auth/token handling, endpoint constants
+  state/       hooks (chat, auth, tasks, settings, hands-free) + stream reducer
+  voice/       SpeechInputEngine interface with Web Speech and native implementations
+  native/      Capacitor Preferences mirror for the web↔native handshake
+  components/  UI components (CSS Modules)
+  brand.ts     product metadata + PWA manifest source
+protocol/      canonical contract fixtures (endpoints, SSE events, handshake)
+android/       Capacitor project + native assistant (app/ember/mobile/assist)
+docs/          Android assistant design notes
+PRODUCT.md     product strategy and voice
+DESIGN.md      visual system: palette, type, motion
+proxy.mjs      production static server + /v1 reverse proxy
+mock-server.mjs  fixture-driven mock of the agent server
 ```
+
+## License
+
+[MIT](LICENSE)
