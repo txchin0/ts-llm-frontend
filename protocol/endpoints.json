@@ -6,6 +6,7 @@
   "authRefresh": "/v1/auth/refresh",
   "authLogout": "/v1/auth/logout",
   "tasks": "/v1/tasks",
+  "taskDismiss": "/v1/tasks/{task_id}/dismiss",
   "integrations": "/v1/integrations",
   "oauthConnectToken": "/v1/oauth/connect-token",
   "oauthStatus": "/v1/oauth/{provider_id}/status",

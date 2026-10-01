@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { Capacitor } from '@capacitor/core';
 
@@ -68,12 +68,7 @@ function ChatApp({ auth, settings }: ChatAppProps) {
   const tasks = useTasks({
     pollIntervalMs: tasksExpanded ? 5_000 : 20_000,
   });
-
-  useEffect(() => {
-    if (tasks.tasks.length === 0 && tasksExpanded) {
-      setTasksExpanded(false);
-    }
-  }, [tasks.tasks.length, tasksExpanded]);
+  const taskCount = tasks.active.length + tasks.finished.length;
 
   const handleNewChat = useCallback(() => {
     reset();
@@ -105,14 +100,16 @@ function ChatApp({ auth, settings }: ChatAppProps) {
           showToolCalls={showToolCalls}
           userId={auth.userId}
         />
-        {tasks.tasks.length > 0 ? (
+        {taskCount > 0 || tasksExpanded ? (
           <TasksPanel
             expanded={tasksExpanded}
             onToggle={() => setTasksExpanded((value) => !value)}
-            tasks={tasks.tasks}
+            active={tasks.active}
+            finished={tasks.finished}
             isLoading={tasks.isLoading}
             error={tasks.error}
             onRefresh={tasks.refresh}
+            onCloseTask={tasks.closeTask}
           />
         ) : null}
         <Composer

@@ -90,7 +90,52 @@ const MOCK_INTEGRATIONS = [
   },
 ];
 
-/** @type {Map<string, { integrations: Record<string, boolean>, oauthConnected: boolean }>} */
+const HOUR_MS = 3_600_000;
+
+/**
+ * Stable-id task fixtures (per user) so dismissing works across polls. The
+ * 5-day-old completed task exists to prove the client's completed_after
+ * window filters it out. Timestamps age naturally while the mock runs.
+ */
+function seedTasks() {
+  const task = (id, description, status, ageHours, extra = {}) => {
+    const created = new Date(Date.now() - ageHours * HOUR_MS).toISOString();
+    const finished = status === 'completed' || status === 'failed';
+    return {
+      id,
+      description,
+      status,
+      created_at: created,
+      updated_at: created,
+      retry_count: 0,
+      result: null,
+      error_message: null,
+      completed_at: finished ? created : null,
+      dismissed_at: null,
+      ...extra,
+    };
+  };
+
+  return [
+    task('task_fix_running1', 'Summarize this week’s meeting notes', 'running', 0.2),
+    task('task_fix_pending1', 'Draft follow-up email to the design team', 'pending', 0.1),
+    task('task_fix_done_2h', 'Compile Q3 metrics report', 'completed', 2, {
+      result: 'Report saved to the shared drive: 14 pages, 3 charts.',
+    }),
+    task('task_fix_failed5h', 'Sync calendar with the project board', 'failed', 5, {
+      retry_count: 2,
+      error_message: 'Google Calendar returned 403: insufficient scopes.',
+    }),
+    task('task_fix_done_2d', 'Translate onboarding doc to German', 'completed', 48, {
+      result: 'Done — 4,200 words translated.',
+    }),
+    task('task_fix_done_5d', 'Archive old support tickets', 'completed', 120, {
+      result: '312 tickets archived.',
+    }),
+  ];
+}
+
+/** @type {Map<string, { integrations: Record<string, boolean>, oauthConnected: boolean, tasks: Array<Record<string, unknown>> }>} */
 const userState = new Map();
 
 function getUserState(userId) {
@@ -100,6 +145,7 @@ function getUserState(userId) {
         MOCK_INTEGRATIONS.map((item) => [item.id, item.enabled]),
       ),
       oauthConnected: false,
+      tasks: seedTasks(),
     });
   }
   return userState.get(userId);
@@ -299,24 +345,61 @@ function handleOAuthDisconnect(req, res) {
 // Tasks
 // ---------------------------------------------------------------------------
 
-function handleTasksGet(req, res) {
+// Query contract mirrors the real server (pi-llm src/contracts/tasks.ts):
+// status (comma-separated or repeated), completed_after (ISO), limit.
+function handleTasksGet(req, res, url) {
   const userId = requireAuth(req, res);
   if (!userId) return;
-  const now = new Date().toISOString();
+
+  const query = parseQuery(url);
+  const statuses = query
+    .getAll('status')
+    .flatMap((value) => value.split(','))
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  const completedAfter = query.get('completed_after');
+  const limit = Number.parseInt(query.get('limit') ?? '', 10);
+
+  let tasks = getUserState(userId).tasks.filter((task) => task.dismissed_at === null);
+  tasks = statuses.length > 0
+    ? tasks.filter((task) => statuses.includes(task.status))
+    : tasks.filter((task) => task.status === 'pending' || task.status === 'running');
+  if (completedAfter) {
+    tasks = tasks.filter(
+      (task) => task.completed_at === null || task.completed_at >= completedAfter,
+    );
+  }
+  tasks = [...tasks].sort((a, b) => a.created_at.localeCompare(b.created_at));
+  if (Number.isFinite(limit) && limit > 0) {
+    tasks = tasks.slice(0, limit);
+  }
+
   sendJson(res, 200, {
-    tasks: [
-      {
-        id: rid('task'),
-        description: 'Summarize this week’s meeting notes',
-        status: 'running',
-        created_at: now,
-        updated_at: now,
-        retry_count: 0,
-        result: null,
-        error_message: null,
-      },
-    ],
+    tasks: tasks.map(({ dismissed_at, ...summary }) => summary),
   });
+}
+
+function handleTaskDismiss(req, res, taskId) {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+
+  const task = getUserState(userId).tasks.find((entry) => entry.id === taskId);
+  if (!task) {
+    sendJson(res, 404, { code: 'not_found', message: 'Task not found.' });
+    return;
+  }
+  if (task.status !== 'completed' && task.status !== 'failed') {
+    sendJson(res, 409, {
+      code: 'task_not_terminal',
+      message: 'Only completed or failed tasks can be dismissed.',
+    });
+    return;
+  }
+
+  // Idempotent, like the real server.
+  task.dismissed_at = task.dismissed_at ?? new Date().toISOString();
+  res.writeHead(204);
+  res.end();
 }
 
 // ---------------------------------------------------------------------------
@@ -433,6 +516,11 @@ const routes = new Map([
   [`DELETE ${fillOAuthPath(endpoints.oauthDisconnect)}`, handleOAuthDisconnect],
 ]);
 
+// The route map is exact-path; templated paths get regex fallbacks below.
+const TASK_DISMISS_RE = new RegExp(
+  `^${endpoints.taskDismiss.replace('{task_id}', '([^/]+)')}$`,
+);
+
 const server = createServer((req, res) => {
   const url = req.url ?? '';
   const path = url.split('?')[0];
@@ -440,6 +528,12 @@ const server = createServer((req, res) => {
   const handler = routes.get(`${method} ${path}`);
   if (handler) {
     handler(req, res, url);
+    return;
+  }
+
+  const dismissMatch = method === 'POST' ? TASK_DISMISS_RE.exec(path) : null;
+  if (dismissMatch) {
+    handleTaskDismiss(req, res, decodeURIComponent(dismissMatch[1]));
     return;
   }
 

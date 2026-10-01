@@ -1,19 +1,24 @@
 import { useEffect } from 'react';
 
 import type { TaskSummary } from '../api/tasks.ts';
-import { AlertIcon, ChevronIcon, ListIcon } from './icons.tsx';
+import { FINISHED_TASK_WINDOW_DAYS } from '../state/taskFilters.ts';
+import { AlertIcon, ChevronIcon, CloseIcon, ListIcon } from './icons.tsx';
 import styles from './TasksPanel.module.css';
 
 interface TasksPanelProps {
   expanded: boolean;
   onToggle: () => void;
-  tasks: TaskSummary[];
+  active: TaskSummary[];
+  finished: TaskSummary[];
   isLoading: boolean;
   error: string | null;
   onRefresh: () => void;
+  onCloseTask: (taskId: string) => void;
 }
 
 const TASKS_BODY_ID = 'tasks-panel-body';
+const ACTIVE_HEADING_ID = 'tasks-panel-active-heading';
+const FINISHED_HEADING_ID = 'tasks-panel-finished-heading';
 
 const STATUS_LABEL: Record<TaskSummary['status'], string> = {
   pending: 'Queued',
@@ -60,13 +65,64 @@ function SkeletonRows() {
   );
 }
 
+interface TaskRowProps {
+  task: TaskSummary;
+  onClose?: (taskId: string) => void;
+}
+
+function TaskRow({ task, onClose }: TaskRowProps) {
+  // Finished rows show when the task finished; active rows show last activity.
+  const timestamp = task.completed_at ?? task.updated_at;
+  const detail =
+    task.status === 'failed' ? task.error_message
+    : task.status === 'completed' ? task.result
+    : null;
+
+  return (
+    <li className={styles.row} data-closable={onClose !== undefined}>
+      <div className={styles.rowMain}>
+        <p className={styles.description}>{task.description}</p>
+        {detail ? (
+          <p
+            className={styles.rowDetail}
+            data-tone={task.status === 'failed' ? 'danger' : 'muted'}
+          >
+            {detail}
+          </p>
+        ) : null}
+        <div className={styles.meta}>
+          <span className={styles.status}>
+            <span className={styles.dot} data-status={task.status} />
+            {STATUS_LABEL[task.status]}
+          </span>
+          <time className={styles.time} dateTime={timestamp}>
+            {formatRelativeTime(timestamp)}
+          </time>
+        </div>
+      </div>
+      {onClose ? (
+        <button
+          type="button"
+          className={styles.closeButton}
+          onClick={() => onClose(task.id)}
+          aria-label={`Dismiss task: ${task.description}`}
+        >
+          <CloseIcon width={16} height={16} />
+        </button>
+      ) : null}
+    </li>
+  );
+}
+
 export function TasksPanel({
   expanded,
   onToggle,
-  tasks,
+  active,
+  finished,
   isLoading,
   error,
   onRefresh,
+  onCloseTask,
 }: TasksPanelProps) {
   useEffect(() => {
     if (!expanded) {
@@ -83,13 +139,12 @@ export function TasksPanel({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [expanded, onToggle]);
 
-  const taskCount = tasks.length;
-  const badgeLabel = taskCount > 99 ? '99+' : String(taskCount);
-  const toggleLabel = `Background tasks, ${taskCount} in queue`;
-
-  if (taskCount === 0) {
-    return null;
-  }
+  const activeCount = active.length;
+  const totalCount = activeCount + finished.length;
+  const badgeLabel = activeCount > 99 ? '99+' : String(activeCount);
+  const toggleLabel =
+    `Background tasks, ${activeCount} active` +
+    (finished.length > 0 ? `, ${finished.length} finished` : '');
 
   return (
     <div className={styles.root} data-expanded={expanded}>
@@ -112,9 +167,6 @@ export function TasksPanel({
                 <ChevronIcon className={styles.headerChevron} width={16} height={16} />
               </button>
             </div>
-            <p className={styles.desc}>
-              Work the agent queued for later. Writes and actions run here while you keep chatting.
-            </p>
           </header>
 
           {error ? (
@@ -127,24 +179,47 @@ export function TasksPanel({
             </div>
           ) : null}
 
-          {isLoading && taskCount === 0 ? <SkeletonRows /> : null}
+          {isLoading && totalCount === 0 ? <SkeletonRows /> : null}
 
-          <ul className={styles.list} aria-busy={isLoading}>
-            {tasks.map((task) => (
-              <li key={task.id} className={styles.row}>
-                <p className={styles.description}>{task.description}</p>
-                <div className={styles.meta}>
-                  <span className={styles.status}>
-                    <span className={styles.dot} data-status={task.status} />
-                    {STATUS_LABEL[task.status]}
-                  </span>
-                  <time className={styles.time} dateTime={task.updated_at}>
-                    {formatRelativeTime(task.updated_at)}
-                  </time>
-                </div>
-              </li>
-            ))}
-          </ul>
+          {!isLoading && totalCount === 0 && !error ? (
+            <p className={styles.empty}>No recent tasks.</p>
+          ) : null}
+
+          <div className={styles.groups}>
+            {activeCount > 0 ? (
+              <section className={styles.group} aria-labelledby={ACTIVE_HEADING_ID}>
+                <h3 id={ACTIVE_HEADING_ID} className={styles.groupLabel}>
+                  In progress
+                </h3>
+                <ul
+                  className={styles.list}
+                  aria-busy={isLoading}
+                  aria-labelledby={ACTIVE_HEADING_ID}
+                >
+                  {active.map((task) => (
+                    <TaskRow key={task.id} task={task} />
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
+            {finished.length > 0 ? (
+              <section className={styles.group} aria-labelledby={FINISHED_HEADING_ID}>
+                <h3 id={FINISHED_HEADING_ID} className={styles.groupLabel}>
+                  Finished · last {FINISHED_TASK_WINDOW_DAYS} days
+                </h3>
+                <ul
+                  className={styles.list}
+                  aria-busy={isLoading}
+                  aria-labelledby={FINISHED_HEADING_ID}
+                >
+                  {finished.map((task) => (
+                    <TaskRow key={task.id} task={task} onClose={onCloseTask} />
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+          </div>
 
           <footer className={styles.footer}>
             <p className={styles.footerMeta}>
@@ -167,8 +242,8 @@ export function TasksPanel({
         {error ? (
           <span className={styles.errorDot} aria-label="Task list failed to load" />
         ) : null}
-        {taskCount > 0 ? (
-          <span className={styles.badge} aria-label={`${taskCount} tasks`}>
+        {activeCount > 0 ? (
+          <span className={styles.badge} aria-label={`${activeCount} active tasks`}>
             {badgeLabel}
           </span>
         ) : null}

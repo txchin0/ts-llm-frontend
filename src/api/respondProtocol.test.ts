@@ -16,6 +16,7 @@ import {
   OAUTH_START_PATH,
   OAUTH_STATUS_PATH,
   RESPOND_PATH,
+  TASK_DISMISS_PATH,
   TASKS_PATH,
 } from './endpoints.ts';
 import { parseSseFrames } from './sse.ts';
@@ -44,6 +45,7 @@ describe('respond protocol contract', () => {
   it('derives runtime path constants from endpoints.json', () => {
     expect(RESPOND_PATH).toBe(endpoints.respond);
     expect(TASKS_PATH).toBe(endpoints.tasks);
+    expect(TASK_DISMISS_PATH).toBe(endpoints.taskDismiss);
     expect(INTEGRATIONS_PATH).toBe(endpoints.integrations);
     expect(OAUTH_CONNECT_TOKEN_PATH).toBe(endpoints.oauthConnectToken);
     expect(OAUTH_STATUS_PATH).toBe(endpoints.oauthStatus);

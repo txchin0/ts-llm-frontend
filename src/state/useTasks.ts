@@ -1,7 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ApiHttpError } from '../api/errors.ts';
-import { listTasks, type TaskSummary } from '../api/tasks.ts';
+import { dismissTask, listTasks, type TaskSummary } from '../api/tasks.ts';
+import {
+  ALL_TASK_STATUSES,
+  finishedWindowStart,
+  selectTaskGroups,
+  TASKS_FETCH_LIMIT,
+} from './taskFilters.ts';
 import { usePollGate } from './usePollGate.ts';
 
 export interface UseTasksOptions {
@@ -9,10 +15,15 @@ export interface UseTasksOptions {
 }
 
 export interface UseTasks {
-  tasks: TaskSummary[];
+  /** pending/running tasks — running first, then FIFO. */
+  active: TaskSummary[];
+  /** Recently finished (completed/failed) tasks — newest first. */
+  finished: TaskSummary[];
   isLoading: boolean;
   error: string | null;
   refresh: () => void;
+  /** Optimistically hides a finished task and dismisses it server-side. */
+  closeTask: (taskId: string) => void;
 }
 
 function toErrorMessage(error: unknown): string {
@@ -45,7 +56,17 @@ export function useTasks({ pollIntervalMs }: UseTasksOptions): UseTasks {
     void (async () => {
       try {
         setError(null);
-        const response = await listTasks({ signal: controller.signal });
+        // Tasks that finished more than the window ago are filtered
+        // server-side, so between polls the window lags by at most one
+        // poll interval — invisible at a days-scale window.
+        const response = await listTasks(
+          {
+            statuses: ALL_TASK_STATUSES,
+            completedAfter: finishedWindowStart(Date.now()),
+            limit: TASKS_FETCH_LIMIT,
+          },
+          { signal: controller.signal },
+        );
         if (controller.signal.aborted) {
           return;
         }
@@ -68,6 +89,21 @@ export function useTasks({ pollIntervalMs }: UseTasksOptions): UseTasks {
     })();
   }, []);
 
+  const closeTask = useCallback(
+    (taskId: string) => {
+      // Optimistic removal; the dismiss endpoint is idempotent, and a failure
+      // resurfaces the task via refresh.
+      tasksRef.current = tasksRef.current.filter((task) => task.id !== taskId);
+      setTasks((previous) => previous.filter((task) => task.id !== taskId));
+
+      void dismissTask(taskId).catch((dismissError: unknown) => {
+        refresh();
+        setError(toErrorMessage(dismissError));
+      });
+    },
+    [refresh],
+  );
+
   useEffect(() => {
     if (!canPoll) {
       abortRef.current?.abort();
@@ -84,5 +120,14 @@ export function useTasks({ pollIntervalMs }: UseTasksOptions): UseTasks {
     };
   }, [canPoll, pollIntervalMs, refresh]);
 
-  return { tasks, isLoading: isLoading && canPoll, error, refresh };
+  const groups = useMemo(() => selectTaskGroups(tasks), [tasks]);
+
+  return {
+    active: groups.active,
+    finished: groups.finished,
+    isLoading: isLoading && canPoll,
+    error,
+    refresh,
+    closeTask,
+  };
 }

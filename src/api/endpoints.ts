@@ -10,6 +10,7 @@ export const AUTH_LOGIN_PATH = endpoints.authLogin;
 export const AUTH_REFRESH_PATH = endpoints.authRefresh;
 export const AUTH_LOGOUT_PATH = endpoints.authLogout;
 export const TASKS_PATH = endpoints.tasks;
+export const TASK_DISMISS_PATH = endpoints.taskDismiss;
 export const INTEGRATIONS_PATH = endpoints.integrations;
 export const OAUTH_CONNECT_TOKEN_PATH = endpoints.oauthConnectToken;
 export const OAUTH_STATUS_PATH = endpoints.oauthStatus;
